@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SAB QUICK 🛵
 
-## Getting Started
+> **Right To Your Door** — Groceries delivered in 10 minutes.
 
-First, run the development server:
+A production-ready **PWA + Capacitor** mobile-first app built with Next.js 15.
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 15 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| Animations | Framer Motion + GSAP |
+| State | Zustand + TanStack Query |
+| Forms | React Hook Form + Zod |
+| Backend | Supabase (PostgreSQL) |
+| Cache | Redis |
+| Media | Cloudinary |
+| Realtime | Socket.IO |
+| Mobile | Capacitor (Android + iOS) |
+| Deploy | Docker + VPS + Cloudflare |
+
+---
+
+## Quick Start
 
 ```bash
+cd sabquick
+npm install
+cp .env.example .env.local
+# Fill in your Supabase + Redis credentials
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Demo Accounts
 
-## Learn More
+| Role | Email | Password |
+|---|---|---|
+| Owner | owner@sab.com | Password123 |
+| Manager | manager@sab.com | Password123 |
+| Staff | staff@sab.com | Password123 |
+| Delivery | delivery@sab.com | Password123 |
+| Customer | customer@sab.com | Password123 |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Routes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Path | Description |
+|---|---|
+| `/` | Splash → Onboarding → Auto-route |
+| `/auth` | Login (email + demo accounts) |
+| `/home` | Customer home |
+| `/explore` | Product search & filter |
+| `/cart` | Cart management |
+| `/checkout` | Address → Payment → Confirm |
+| `/orders` | Order history |
+| `/orders/track` | Live order tracking |
+| `/profile` | User profile |
+| `/delivery` | Delivery partner dashboard |
+| `/staff` | Staff inventory + packing panel |
+| `/manager` | Manager analytics |
+| `/owner` | Owner business dashboard |
+| `/admin` | Admin super panel |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Database
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run `supabase/schema.sql` in your Supabase SQL Editor to create all tables with RLS policies and seed demo data.
+
+---
+
+## Docker
+
+```bash
+docker-compose up -d
+```
+
+---
+
+## Capacitor (Mobile)
+
+```bash
+npm run build
+npx cap add android
+npx cap add ios
+npx cap sync
+npx cap open android   # Opens Android Studio
+npx cap open ios       # Opens Xcode
+```
+
+---
+
+## Brand
+
+- Primary Green: `#2CA01C`
+- Deep Black: `#0D0D0D`
+- Surface: `#F7F8F9`
+- Accent Glow: `rgba(44,160,28,0.15)`
