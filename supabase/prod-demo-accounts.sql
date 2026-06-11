@@ -1,24 +1,25 @@
--- PRODUCTION READY DEMO ACCOUNTS (V4 - Fixed Triggers & Single-Statement)
--- INSTRUCTIONS: 
--- 1. Click "RUN" (Not "Explain") in the Supabase SQL Editor.
--- 2. If it asks to run multiple statements, click "YES/RUN".
-
--- 1. Setup Extensions
+-- PRODUCTION READY DEMO ACCOUNTS (V7 - Final PKEY Fix)
+-- 1. Setup
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- 2. Cleanup and Create Accounts in a single transaction block
+-- 2. REPAIR PERMISSIONS
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO postgres, anon, authenticated, service_role;
+
+-- 3. Cleanup & Creation Block
 DO $$ 
 DECLARE
     item RECORD;
     new_user_id UUID;
 BEGIN
-    -- PHASE A: CLEANUP
-    -- Remove existing records to avoid conflicts
+    -- PHASE A: DELETE EXISTING
+    -- This removes records from auth.users (cascades) and public.users
     DELETE FROM auth.users WHERE email IN ('owner@sab.com', 'manager@sab.com', 'customer@sab.com', 'delivery@sab.com', 'staff@sab.com');
     DELETE FROM public.users WHERE email IN ('owner@sab.com', 'manager@sab.com', 'customer@sab.com', 'delivery@sab.com', 'staff@sab.com');
 
-    -- PHASE B: CREATE ACCOUNTS
-    -- We define the accounts to create
+    -- PHASE B: CREATE NEW
     FOR item IN (
         SELECT 'owner@sab.com' as email, 'Password123' as pass, 'Demo Owner' as name, 'owner' as role UNION ALL
         SELECT 'manager@sab.com', 'Password123', 'Demo Manager', 'manager' UNION ALL
@@ -52,7 +53,8 @@ BEGIN
             'email', new_user_id::text, now(), now(), now()
         );
 
-        -- 3. Manually Create Public Profile (Bypassing trigger issues if any)
+        -- 3. Create Public Profile with ON CONFLICT (UPSERT)
+        -- This handles cases where the ID might still exist due to transaction lag
         INSERT INTO public.users (id, name, email, role)
         VALUES (new_user_id, item.name, item.email, item.role)
         ON CONFLICT (id) DO UPDATE SET
@@ -60,6 +62,9 @@ BEGIN
             email = EXCLUDED.email,
             role = EXCLUDED.role;
 
-        RAISE NOTICE 'Created demo user: %', item.email;
+        RAISE NOTICE 'Success: Created %', item.email;
     END LOOP;
 END $$;
+
+-- 4. Reload Schema
+NOTIFY pgrst, 'reload schema';
