@@ -114,6 +114,9 @@ export default function AuthPage() {
     setError(null);
     
     try {
+      // Get app URL from environment or default to localhost
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      
       // Sign up user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -122,7 +125,8 @@ export default function AuthPage() {
           data: {
             name: data.name,
             role: "customer"
-          }
+          },
+          emailRedirectTo: `${appUrl}/auth`
         }
       });
 
