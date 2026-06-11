@@ -19,7 +19,13 @@ const PAY_METHODS = [
 
 export default function CheckoutPage() {
   const [step, setStep] = useState(0);
-  const [address, setAddress] = useState({ line1: "", city: "Mumbai", pincode: "400001" });
+  const [address, setAddress] = useState({
+    line1: "",
+    landmark: "",
+    city: "Mumbai",
+    state: "Maharashtra",
+    pincode: "400001"
+  });
   const [payMethod, setPayMethod] = useState("upi");
   const [placing, setPlacing] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
@@ -28,33 +34,52 @@ export default function CheckoutPage() {
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
 
-  // Try to fetch user's current location on mount
-  useEffect(() => {
-    const getLocation = async () => {
-      if (!navigator.geolocation) return;
-      
-      setFetchingLocation(true);
-      try {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            // For now, we use the lat/lng to show a "Current Location" label
-            // In a real app, you'd reverse geocode to get city/pincode
-            setAddress(prev => ({
-              ...prev,
-              line1: `📍 Near Current Location (${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)})`
-            }));
-            setFetchingLocation(false);
-          },
-          () => {
-            // If user denies or fails, just leave as default
-            setFetchingLocation(false);
-          }
-        );
-      } catch (e) {
+  // Reverse geocoding to get real address text from GPS coordinates
+  const reverseGeocode = async (lat: number, lng: number) => {
+    try {
+      // Use OpenStreetMap Nominatim API for free reverse geocoding
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      const data = await res.json();
+      if (data.address) {
+        const addr = data.address;
+        const line1 = [
+          addr.house_number, addr.road, addr.suburb, addr.neighbourhood
+        ].filter(Boolean).join(", ");
+        
+        setAddress({
+          line1: line1 || "📍 My Current Location",
+          landmark: addr.landmark || addr.poi || "",
+          city: addr.city || addr.town || addr.district || "Mumbai",
+          state: addr.state || "Maharashtra",
+          pincode: addr.postcode || "400001"
+        });
+      }
+    } catch (e) {
+      // Fallback if API fails
+    }
+  };
+
+  // Fetch GPS location and reverse geocode
+  const getLocation = () => {
+    if (!navigator.geolocation) return;
+    
+    setFetchingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        setFetchingLocation(false);
+      },
+      () => {
         setFetchingLocation(false);
       }
-    };
+    );
+  };
 
+  useEffect(() => {
+    // Auto-fetch location on page load
     getLocation();
   }, []);
 
@@ -66,7 +91,11 @@ export default function CheckoutPage() {
         items,
         total: total(),
         paymentMethod: payMethod,
-        address,
+        address: {
+          line1: `${address.line1}${address.landmark ? `, ${address.landmark}` : ''}`,
+          city: address.city,
+          pincode: address.pincode
+        },
         userId: user?.id,
       });
       clearCart();
@@ -99,76 +128,102 @@ export default function CheckoutPage() {
         </div>
 
         <div className="px-4 mt-4 space-y-3">
-          {/* Step 0 — Address (Improved UX like Blinkit/Zomato) */}
+          {/* Step 0 — Address (Zepto/Blinkit Style) */}
           {step === 0 && (
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
-              <div className="bg-white rounded-3xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-4">
+              {/* Primary Location Button (Like Zepto) */}
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={getLocation}
+                className="w-full bg-white rounded-3xl p-4 shadow-card flex items-center gap-3 border-2 border-brand-green/30 mb-2"
+              >
+                <div className="w-12 h-12 rounded-full bg-brand-green/10 flex items-center justify-center">
+                  {fetchingLocation ? (
+                    <Loader2 size={22} className="animate-spin text-brand-green" />
+                  ) : (
+                    <LocateFixed size={22} className="text-brand-green" />
+                  )}
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="font-black text-brand-black text-base">
+                    {fetchingLocation ? "Fetching your address..." : "Use My Current Location"}
+                  </h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {fetchingLocation ? "Please wait..." : "GPS will auto-detect and fill your address"}
+                  </p>
+                </div>
+                <ArrowRight size={20} className="text-gray-300" />
+              </motion.button>
+
+              {/* Address Form */}
+              <div className="bg-white rounded-3xl p-4 shadow-card space-y-3">
+                <div className="flex items-center gap-2 mb-1">
                   <MapPin size={18} className="text-brand-green" />
-                  <h3 className="font-black text-lg text-brand-black">Delivery Address</h3>
+                  <h3 className="font-black text-lg text-brand-black">Enter Complete Address</h3>
                 </div>
 
-                {/* Big Current Location Button */}
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    // Re-trigger location fetch
-                    setFetchingLocation(true);
-                    navigator.geolocation.getCurrentPosition(
-                      (position) => {
-                        setAddress(prev => ({
-                          ...prev,
-                          line1: `📍 Near Current Location (${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)})`
-                        }));
-                        setFetchingLocation(false);
-                      },
-                      () => {
-                        setFetchingLocation(false);
-                      }
-                    );
-                  }}
-                  className="w-full py-4 rounded-2xl bg-brand-green/10 border-2 border-brand-green/30 flex items-center justify-center gap-2 mb-3 hover:bg-brand-green/20 transition-all"
-                >
-                  {fetchingLocation ? (
-                    <><Loader2 size={20} className="animate-spin text-brand-green" /> Fetching your location...</>
-                  ) : (
-                    <><LocateFixed size={20} className="text-brand-green" /> <span className="font-bold text-brand-green">Use My Current Location</span></>
-                  )}
-                </motion.button>
+                <div className="space-y-3">
+                  {/* House/Flat/Street */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">House / Flat No. & Street</label>
+                    <input
+                      value={address.line1}
+                      onChange={(e) => setAddress({ ...address, line1: e.target.value })}
+                      placeholder="A-101, Green Avenue, Main Road"
+                      className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
 
-                {/* Manual Address Input */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Enter Address Details</label>
-                  <input
-                    value={address.line1}
-                    onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-                    placeholder="House / Flat No., Street, Area, Landmark"
-                    className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
-                  />
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1">City</label>
+                  {/* Landmark */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Landmark (Optional)</label>
+                    <input
+                      value={address.landmark}
+                      onChange={(e) => setAddress({ ...address, landmark: e.target.value })}
+                      placeholder="Near Pizza Hut, Opp. Park"
+                      className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
+
+                  {/* City & State Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">City</label>
                       <input
                         value={address.city}
                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                        placeholder="City"
-                        className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                        placeholder="Mumbai"
+                        className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                       />
                     </div>
-                    <div className="w-28">
-                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1">PIN</label>
+                    <div>
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">State</label>
                       <input
-                        value={address.pincode}
-                        onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                        placeholder="400001"
-                        className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                        value={address.state}
+                        onChange={(e) => setAddress({ ...address, state: e.target.value })}
+                        placeholder="Maharashtra"
+                        className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
                       />
                     </div>
                   </div>
+
+                  {/* PIN Code */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">PIN Code</label>
+                    <input
+                      value={address.pincode}
+                      onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+                      placeholder="400001"
+                      maxLength={6}
+                      className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Continue Button */}
               <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep(1)}
-                className="w-full py-4 rounded-2xl bg-brand-green text-white font-bold shadow-green flex items-center justify-center gap-2">
+                className="w-full py-4 rounded-2xl bg-brand-green text-white font-black text-base shadow-green flex items-center justify-center gap-2">
                 Continue to Payment <ArrowRight size={18} />
               </motion.button>
             </motion.div>
