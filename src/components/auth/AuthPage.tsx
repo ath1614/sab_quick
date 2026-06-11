@@ -229,6 +229,59 @@ export default function AuthPage() {
                     </span>
                   ) : "Sign In"}
                 </motion.button>
+
+                <div className="my-6 flex items-center">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="mx-4 text-gray-400 text-xs font-bold uppercase">Quick Demo Login</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <div className="space-y-3">
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      const demoUser = { id: "demo-owner-id", name: "Demo Owner", email: "owner@sab.com", role: "owner" as Role };
+                      setUser(demoUser, null);
+                      router.push(ROLE_ROUTES.owner);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-amber-600 text-white font-bold text-sm shadow-md"
+                  >
+                    🟡 Login as Owner
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      const demoUser = { id: "demo-manager-id", name: "Demo Manager", email: "manager@sab.com", role: "manager" as Role };
+                      setUser(demoUser, null);
+                      router.push(ROLE_ROUTES.manager);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm shadow-md"
+                  >
+                    🔵 Login as Manager
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      const demoUser = { id: "demo-customer-id", name: "Demo Customer", email: "customer@sab.com", role: "customer" as Role };
+                      setUser(demoUser, null);
+                      router.push(ROLE_ROUTES.customer);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-brand-green text-white font-bold text-sm shadow-md"
+                  >
+                    🟢 Login as Customer
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      const demoUser = { id: "demo-delivery-id", name: "Demo Delivery", email: "delivery@sab.com", role: "delivery" as Role };
+                      setUser(demoUser, null);
+                      router.push(ROLE_ROUTES.delivery);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-purple-600 text-white font-bold text-sm shadow-md"
+                  >
+                    🟣 Login as Delivery
+                  </motion.button>
+                </div>
               </form>
             </motion.div>
           ) : (
