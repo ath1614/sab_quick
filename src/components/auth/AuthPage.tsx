@@ -66,14 +66,18 @@ export default function AuthPage() {
 
       if (authError) throw authError;
 
+      // Small delay to allow PostgREST schema cache to stabilize if just created
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
-        .eq("email", data.email)
+        .eq("id", authData.user?.id) // Use ID instead of email for better performance/reliability
         .single();
 
       if (profileError || !profile) {
-        throw new Error("User profile not found");
+        console.error("Profile fetch error:", profileError);
+        throw new Error("User profile not found. Please try logging in again in a moment.");
       }
 
       setUser({
