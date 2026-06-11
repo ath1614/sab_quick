@@ -1,9 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useCartStore, useAuthStore } from "@/store";
 import { formatCurrency } from "@/lib/utils";
-import { MapPin, CreditCard, CheckCircle, ArrowRight } from "lucide-react";
+import { MapPin, CreditCard, CheckCircle, ArrowRight, LocateFixed, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
@@ -22,10 +22,41 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState({ line1: "", city: "Mumbai", pincode: "400001" });
   const [payMethod, setPayMethod] = useState("upi");
   const [placing, setPlacing] = useState(false);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
   const [error, setError] = useState("");
   const { user } = useAuthStore();
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
+
+  // Try to fetch user's current location on mount
+  useEffect(() => {
+    const getLocation = async () => {
+      if (!navigator.geolocation) return;
+      
+      setFetchingLocation(true);
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            // For now, we use the lat/lng to show a "Current Location" label
+            // In a real app, you'd reverse geocode to get city/pincode
+            setAddress(prev => ({
+              ...prev,
+              line1: `📍 Near Current Location (${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)})`
+            }));
+            setFetchingLocation(false);
+          },
+          () => {
+            // If user denies or fails, just leave as default
+            setFetchingLocation(false);
+          }
+        );
+      } catch (e) {
+        setFetchingLocation(false);
+      }
+    };
+
+    getLocation();
+  }, []);
 
   const placeOrder = async () => {
     setPlacing(true);
@@ -68,23 +99,72 @@ export default function CheckoutPage() {
         </div>
 
         <div className="px-4 mt-4 space-y-3">
-          {/* Step 0 — Address */}
+          {/* Step 0 — Address (Improved UX like Blinkit/Zomato) */}
           {step === 0 && (
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
               <div className="bg-white rounded-3xl p-4 shadow-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin size={16} className="text-brand-green" />
-                  <h3 className="font-bold text-brand-black">Delivery Address</h3>
+                <div className="flex items-center gap-2 mb-4">
+                  <MapPin size={18} className="text-brand-green" />
+                  <h3 className="font-black text-lg text-brand-black">Delivery Address</h3>
                 </div>
-                <input
-                  value={address.line1}
-                  onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-                  placeholder="House / Flat No., Street, Area"
-                  className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20 mb-2"
-                />
-                <div className="flex gap-2">
-                  <input value={address.city} readOnly className="flex-1 px-4 py-3 rounded-xl bg-brand-surface text-sm text-gray-500" />
-                  <input value={address.pincode} readOnly className="w-28 px-4 py-3 rounded-xl bg-brand-surface text-sm text-gray-500" />
+
+                {/* Big Current Location Button */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    // Re-trigger location fetch
+                    setFetchingLocation(true);
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setAddress(prev => ({
+                          ...prev,
+                          line1: `📍 Near Current Location (${position.coords.latitude.toFixed(3)}, ${position.coords.longitude.toFixed(3)})`
+                        }));
+                        setFetchingLocation(false);
+                      },
+                      () => {
+                        setFetchingLocation(false);
+                      }
+                    );
+                  }}
+                  className="w-full py-4 rounded-2xl bg-brand-green/10 border-2 border-brand-green/30 flex items-center justify-center gap-2 mb-3 hover:bg-brand-green/20 transition-all"
+                >
+                  {fetchingLocation ? (
+                    <><Loader2 size={20} className="animate-spin text-brand-green" /> Fetching your location...</>
+                  ) : (
+                    <><LocateFixed size={20} className="text-brand-green" /> <span className="font-bold text-brand-green">Use My Current Location</span></>
+                  )}
+                </motion.button>
+
+                {/* Manual Address Input */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Enter Address Details</label>
+                  <input
+                    value={address.line1}
+                    onChange={(e) => setAddress({ ...address, line1: e.target.value })}
+                    placeholder="House / Flat No., Street, Area, Landmark"
+                    className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                  />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1">City</label>
+                      <input
+                        value={address.city}
+                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                        placeholder="City"
+                        className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                      />
+                    </div>
+                    <div className="w-28">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1">PIN</label>
+                      <input
+                        value={address.pincode}
+                        onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
+                        placeholder="400001"
+                        className="w-full px-4 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <motion.button whileTap={{ scale: 0.97 }} onClick={() => setStep(1)}
