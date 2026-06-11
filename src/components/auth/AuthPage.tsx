@@ -6,9 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuthStore } from "@/store";
 import { useRouter } from "next/navigation";
-import { DEMO_ACCOUNTS } from "@/lib/constants";
 import type { Role } from "@/lib/constants";
-import { Eye, EyeOff, Mail, Lock, ChevronDown, User } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 const loginSchema = z.object({
@@ -37,19 +36,17 @@ const ROLE_ROUTES: Record<Role, string> = {
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPass, setShowPass] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setUser = useAuthStore((s) => s.setUser);
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
-  // Already logged in — redirect
   useEffect(() => {
     if (user) router.replace(ROLE_ROUTES[user.role] ?? "/home");
   }, [user, router]);
 
-  const { register: registerLogin, handleSubmit: handleSubmitLogin, setValue: setValueLogin, formState: { errors: errorsLogin } } = useForm<LoginFormData>({
+  const { register: registerLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorsLogin } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
@@ -69,7 +66,6 @@ export default function AuthPage() {
 
       if (authError) throw authError;
 
-      // Get user profile/role from our users table
       const { data: profile, error: profileError } = await supabase
         .from("users")
         .select("*")
@@ -77,19 +73,6 @@ export default function AuthPage() {
         .single();
 
       if (profileError || !profile) {
-        // Fallback for demo accounts if profile not in DB yet
-        const demoAccount = Object.values(DEMO_ACCOUNTS).find(a => a.email === data.email);
-        if (demoAccount) {
-          const userData = {
-            id: authData.user.id,
-            name: demoAccount.role.charAt(0).toUpperCase() + demoAccount.role.slice(1),
-            email: data.email,
-            role: demoAccount.role
-          };
-          setUser(userData, authData.session);
-          router.push(ROLE_ROUTES[demoAccount.role]);
-          return;
-        }
         throw new Error("User profile not found");
       }
 
@@ -114,10 +97,8 @@ export default function AuthPage() {
     setError(null);
     
     try {
-      // Get app URL from environment or default to localhost
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
       
-      // Sign up user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -132,7 +113,6 @@ export default function AuthPage() {
 
       if (authError) throw authError;
 
-      // If email confirmation is disabled, user is already signed in
       if (authData.session && authData.user) {
         const userData = {
           id: authData.user.id,
@@ -153,16 +133,8 @@ export default function AuthPage() {
     }
   };
 
-  const fillDemo = (key: string) => {
-    const acc = DEMO_ACCOUNTS[key];
-    setValueLogin("email", acc.email);
-    setValueLogin("password", acc.password);
-    setShowDemo(false);
-  };
-
   return (
     <div className="min-h-screen bg-brand-surface flex flex-col safe-bottom">
-      {/* Geometric header */}
       <div className="relative bg-brand-black overflow-hidden safe-top" style={{ minHeight: 220 }}>
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 390 220" preserveAspectRatio="xMidYMid slice">
           <polygon points="220,0 390,0 390,180 160,220" fill="#2CA01C" opacity="0.1" />
@@ -176,7 +148,6 @@ export default function AuthPage() {
           )))}
         </svg>
         <div className="relative z-10 flex flex-col items-center justify-center h-full pt-12 pb-8 px-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="SAB QUICK" className="w-20 h-auto mb-4 drop-shadow-2xl" />
           <h1 className="text-2xl font-black text-white">{isLogin ? "Welcome back" : "Create account"}</h1>
           <p className="text-white/40 text-sm mt-1">{isLogin ? "Sign in to continue" : "Sign up to get started"}</p>
@@ -255,39 +226,6 @@ export default function AuthPage() {
                   ) : "Sign In"}
                 </motion.button>
               </form>
-
-              {/* Demo accounts */}
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowDemo(!showDemo)}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-gray-300 text-gray-500 text-sm font-medium"
-                >
-                  Demo Accounts <ChevronDown size={14} className={`transition-transform ${showDemo ? "rotate-180" : ""}`} />
-                </button>
-                <AnimatePresence>
-                  {showDemo && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-2 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                        {Object.entries(DEMO_ACCOUNTS).map(([key, acc]) => (
-                          <button
-                            key={key}
-                            onClick={() => fillDemo(key)}
-                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-brand-surface transition-colors border-b border-gray-50 last:border-0"
-                          >
-                            <span className="font-semibold text-brand-black capitalize text-sm">{key}</span>
-                            <span className="text-xs text-gray-400">{acc.email}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
             </motion.div>
           ) : (
             <motion.div
