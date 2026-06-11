@@ -240,7 +240,7 @@ export default function AuthPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      const demoUser = { id: "demo-owner-id", name: "Demo Owner", email: "owner@sab.com", role: "owner" as Role };
+                      const demoUser = { id: "550e8400-e29b-41d4-a716-446655440000", name: "Demo Owner", email: "owner@sab.com", role: "owner" as Role };
                       setUser(demoUser, null);
                       router.push(ROLE_ROUTES.owner);
                     }}
@@ -251,7 +251,7 @@ export default function AuthPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      const demoUser = { id: "demo-manager-id", name: "Demo Manager", email: "manager@sab.com", role: "manager" as Role };
+                      const demoUser = { id: "550e8400-e29b-41d4-a716-446655440001", name: "Demo Manager", email: "manager@sab.com", role: "manager" as Role };
                       setUser(demoUser, null);
                       router.push(ROLE_ROUTES.manager);
                     }}
@@ -262,7 +262,7 @@ export default function AuthPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      const demoUser = { id: "demo-customer-id", name: "Demo Customer", email: "customer@sab.com", role: "customer" as Role };
+                      const demoUser = { id: "550e8400-e29b-41d4-a716-446655440002", name: "Demo Customer", email: "customer@sab.com", role: "customer" as Role };
                       setUser(demoUser, null);
                       router.push(ROLE_ROUTES.customer);
                     }}
@@ -273,7 +273,7 @@ export default function AuthPage() {
                   <motion.button
                     whileTap={{ scale: 0.97 }}
                     onClick={() => {
-                      const demoUser = { id: "demo-delivery-id", name: "Demo Delivery", email: "delivery@sab.com", role: "delivery" as Role };
+                      const demoUser = { id: "550e8400-e29b-41d4-a716-446655440003", name: "Demo Delivery", email: "delivery@sab.com", role: "delivery" as Role };
                       setUser(demoUser, null);
                       router.push(ROLE_ROUTES.delivery);
                     }}
