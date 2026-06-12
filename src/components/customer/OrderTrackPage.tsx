@@ -2,10 +2,12 @@
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle, Package, Truck, MapPin, Phone } from "lucide-react";
+import { CheckCircle, Package, Truck, Phone } from "lucide-react";
 import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useBusinessStore } from "@/store";
+import { useOrderLocation } from "@/hooks/useDeliveryLocation";
+import LiveMap from "@/components/shared/LiveMap";
 import type { Order } from "@/types";
 
 const STATUSES = [
@@ -33,6 +35,11 @@ export default function OrderTrackPage() {
   const orders = useBusinessStore((s) => s.orders);
 
   const order = useMemo(() => orders.find((o) => o.id === id), [orders, id]);
+  const driverLocation = useOrderLocation(id);
+  const destination =
+    order?.address?.lat != null && order?.address?.lng != null
+      ? { lat: order.address.lat, lng: order.address.lng }
+      : null;
 
   const currentStep = order ? STEP_BY_STATUS[order.status] ?? 0 : 0;
   const isRejected = order?.status === "rejected";
@@ -53,29 +60,14 @@ export default function OrderTrackPage() {
           </div>
         ) : (
           <>
-            {/* Map placeholder (live map integration is a separate milestone) */}
-            <div className="mx-4 mt-4 rounded-3xl overflow-hidden h-52 relative"
-              style={{ background: "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)" }}>
-              <svg className="absolute inset-0 w-full h-full opacity-20">
-                {[1, 2, 3].map((i) => <line key={`h${i}`} x1="0" y1={`${i * 25}%`} x2="100%" y2={`${i * 25}%`} stroke="#2CA01C" strokeWidth="1" />)}
-                {[1, 2, 3, 4, 5].map((i) => <line key={`v${i}`} x1={`${i * 16.6}%`} y1="0" x2={`${i * 16.6}%`} y2="100%" stroke="#2CA01C" strokeWidth="1" />)}
-              </svg>
-              <motion.div
-                className="absolute text-3xl"
-                style={{ top: "40%", left: "20%" }}
-                animate={{ x: [0, 30, 60, 90], y: [0, -8, 4, -4] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <div className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center shadow-green">
-                  <Truck size={18} className="text-white" />
-                </div>
-              </motion.div>
-              <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                <div className="w-8 h-8 rounded-full bg-brand-black flex items-center justify-center">
-                  <MapPin size={14} className="text-brand-green" />
-                </div>
-              </div>
-              <div className="absolute bottom-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-card flex items-center gap-2">
+            {/* Live map — real Mapbox when configured, placeholder otherwise */}
+            <div className="mx-4 mt-4 rounded-3xl overflow-hidden h-52 relative">
+              <LiveMap
+                driver={driverLocation}
+                destination={destination}
+                className="absolute inset-0 w-full h-full"
+              />
+              <div className="absolute bottom-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-card flex items-center gap-2 z-10">
                 <div className="w-2 h-2 rounded-full bg-brand-green animate-pulse" />
                 <span className="text-xs font-bold text-brand-black">ETA: {eta.toFixed(0)} mins</span>
               </div>

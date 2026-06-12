@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useCartStore, useAuthStore } from "@/store";
 import { formatCurrency } from "@/lib/utils";
@@ -10,6 +10,7 @@ import AuthGuard from "@/components/layout/AuthGuard";
 import { createOrder } from "@/lib/orders";
 import { payWithRazorpay, isOnlinePaymentEnabled } from "@/lib/payments-client";
 import { deliveryFeeFor } from "@/lib/pricing";
+import { geocodeSearch, mapsEnabled, type GeoSuggestion } from "@/lib/maps";
 
 const STEPS = ["Address", "Payment"];
 
@@ -39,6 +40,28 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [error, setError] = useState("");
+  const [addrQuery, setAddrQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<GeoSuggestion[]>([]);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onAddrSearch = (q: string) => {
+    setAddrQuery(q);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(async () => {
+      setSuggestions(await geocodeSearch(q));
+    }, 300);
+  };
+
+  const pickSuggestion = (s: GeoSuggestion) => {
+    setAddress((a) => ({
+      ...a,
+      line1: s.label,
+      city: s.city || a.city,
+      pincode: s.pincode || a.pincode,
+    }));
+    setAddrQuery("");
+    setSuggestions([]);
+  };
   const { user } = useAuthStore();
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
@@ -181,6 +204,31 @@ export default function CheckoutPage() {
           {/* Step 0 — Address (Zepto/Blinkit Style) */}
           {step === 0 && (
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+              {/* Address autocomplete (only when Mapbox is configured) */}
+              {mapsEnabled() && (
+                <div className="relative">
+                  <input
+                    value={addrQuery}
+                    onChange={(e) => onAddrSearch(e.target.value)}
+                    placeholder="🔍 Search for your address"
+                    className="w-full px-4 py-3.5 rounded-2xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                  />
+                  {suggestions.length > 0 && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
+                      {suggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => pickSuggestion(s)}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-brand-surface border-b border-gray-50 last:border-0"
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Primary Location Button (Like Zepto) */}
               <motion.button
                 whileTap={{ scale: 0.97 }}

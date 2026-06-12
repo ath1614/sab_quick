@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { User, CartItem, Product, Order, Category, StaffMember, Permission, Coupon } from "@/types";
 import { DEMO_PRODUCTS, DEMO_ORDERS, DEMO_CATEGORIES, DEMO_STAFF } from "@/lib/demo-data";
 import { supabase } from "@/lib/supabase";
+import { pickDriver, type DriverLoad } from "@/lib/routing";
 import type { Session } from "@supabase/supabase-js";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -118,6 +119,7 @@ interface BusinessStore {
   rejectOrderItem: (orderId: string, productId: string, reason: string) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order["status"]) => Promise<void>;
   assignDeliveryPartner: (orderId: string, partnerId: string) => Promise<void>;
+  autoAssignDeliveryPartner: (orderId: string) => Promise<string | null>;
 
   // Staff
   addStaffMember: (s: Omit<StaffMember, "id" | "joinedAt">) => Promise<string | null>;
@@ -307,6 +309,21 @@ export const useBusinessStore = create<BusinessStore>()(
             orders: get().orders.map((o) => o.id === orderId ? { ...o, deliveryPartnerId: partnerId } : o),
           });
         }
+      },
+      autoAssignDeliveryPartner: async (orderId) => {
+        const { orders, deliveryPartners } = get();
+        const activeStatuses = ["new", "accepted", "preparing", "packed", "out_for_delivery"];
+        // Current load per partner = their in-flight orders.
+        const loads: DriverLoad[] = deliveryPartners.map((p) => ({
+          id: p.id,
+          activeOrders: orders.filter(
+            (o) => o.deliveryPartnerId === p.id && activeStatuses.includes(o.status)
+          ).length,
+        }));
+        const partnerId = pickDriver(loads);
+        if (!partnerId) return null;
+        await get().assignDeliveryPartner(orderId, partnerId);
+        return partnerId;
       },
 
       addStaffMember: async (s) => {
