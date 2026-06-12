@@ -1,6 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
-const env=Object.fromEntries(fs.readFileSync(".env.local","utf8").split("\n").filter(l=>l.includes("=")&&!l.trim().startsWith("#")).map(l=>{const i=l.indexOf("=");return [l.slice(0,i).trim(),l.slice(i+1).trim()];}));
+const env = { ...process.env };
+try {
+  for (const l of fs.readFileSync(".env.local", "utf8").split("\n")) {
+    if (l.includes("=") && !l.trim().startsWith("#")) {
+      const i = l.indexOf("="); const k = l.slice(0, i).trim();
+      if (!env[k]) env[k] = l.slice(i + 1).trim();
+    }
+  }
+} catch {}
 const anon=createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {auth:{persistSession:false}});
 const admin=createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {auth:{persistSession:false}});
 const tables=["users","orders","order_items","addresses","transactions","notifications","deliveries","inventory","analytics_events","delivery_locations","coupons","products","categories","banners"];

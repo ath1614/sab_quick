@@ -4,11 +4,15 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
 
-const env = Object.fromEntries(
-  fs.readFileSync(".env.local", "utf8").split("\n")
-    .filter((l) => l.includes("=") && !l.trim().startsWith("#"))
-    .map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; })
-);
+const env = { ...process.env };
+try {
+  for (const l of fs.readFileSync(".env.local", "utf8").split("\n")) {
+    if (l.includes("=") && !l.trim().startsWith("#")) {
+      const i = l.indexOf("="); const k = l.slice(0, i).trim();
+      if (!env[k]) env[k] = l.slice(i + 1).trim();
+    }
+  }
+} catch {}
 const URL = env.NEXT_PUBLIC_SUPABASE_URL, ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY, SVC = env.SUPABASE_SERVICE_ROLE_KEY;
 const admin = createClient(URL, SVC, { auth: { persistSession: false } });
 const stamp = Math.floor(Math.random() * 1e6).toString(36) + Date.now().toString(36);

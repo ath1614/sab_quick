@@ -1,24 +1,29 @@
 "use client";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useCartStore } from "@/store";
 import type { Product } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Plus, Minus, Clock } from "lucide-react";
+import ProductDetailSheet from "@/components/customer/ProductDetailSheet";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { items, addItem, updateQty } = useCartStore();
   const cartItem = items.find((i) => i.product.id === product.id);
   const qty = cartItem?.quantity ?? 0;
   const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
+  const [showDetail, setShowDetail] = useState(false);
 
   return (
+    <>
+    {showDetail && <ProductDetailSheet product={product} onClose={() => setShowDetail(false)} />}
     <motion.div
       className="bg-white rounded-3xl overflow-hidden shadow-card relative"
       whileHover={{ y: -3, boxShadow: "0 12px 40px rgba(0,0,0,0.13)" }}
       transition={{ type: "spring", stiffness: 300, damping: 22 }}
     >
-      {/* Image */}
-      <div className="relative">
+      {/* Image (tap to open details) */}
+      <div className="relative cursor-pointer" onClick={() => setShowDetail(true)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={product.image}
@@ -45,7 +50,8 @@ export default function ProductCard({ product }: { product: Product }) {
 
       {/* Content */}
       <div className="p-3">
-        <p className="font-bold text-brand-black text-sm leading-tight mb-0.5 line-clamp-1">{product.name}</p>
+        <p onClick={() => setShowDetail(true)}
+          className="font-bold text-brand-black text-sm leading-tight mb-0.5 line-clamp-1 cursor-pointer">{product.name}</p>
         <p className="text-[11px] text-gray-400 mb-2.5">{product.unit}</p>
 
         <div className="flex items-center justify-between">
@@ -90,5 +96,6 @@ export default function ProductCard({ product }: { product: Product }) {
         />
       )}
     </motion.div>
+    </>
   );
 }
