@@ -8,8 +8,9 @@
 -- ============================================================================
 
 -- ─── ORDERS ──────────────────────────────────────────────────────────────────
+-- ENABLE (not FORCE): anon/authenticated are subject to RLS; the service role
+-- still bypasses (webhook), and the SECURITY DEFINER place_order keeps working.
 alter table public.orders enable row level security;
-alter table public.orders force row level security;
 
 drop policy if exists "Users can view own orders" on public.orders;
 drop policy if exists "Users can create orders" on public.orders;
@@ -33,7 +34,6 @@ create policy "Delivery can update assigned orders" on public.orders
 
 -- ─── ORDER ITEMS ─────────────────────────────────────────────────────────────
 alter table public.order_items enable row level security;
-alter table public.order_items force row level security;
 
 drop policy if exists "Users can view own order items" on public.order_items;
 drop policy if exists "Staff/Manager/Owner can view all order items" on public.order_items;
