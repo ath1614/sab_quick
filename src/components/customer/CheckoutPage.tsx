@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { createOrder } from "@/lib/orders";
+import { payWithRazorpay, isOnlinePaymentEnabled } from "@/lib/payments-client";
 
 const STEPS = ["Address", "Payment"];
 
@@ -15,9 +16,15 @@ const STEPS = ["Address", "Payment"];
 // shown here matches what the server will actually charge.
 const deliveryFeeFor = (subtotal: number) => (subtotal >= 199 ? 0 : 25);
 
+// Online methods only appear when Razorpay is configured; COD always works.
+const ONLINE_ENABLED = isOnlinePaymentEnabled();
 const PAY_METHODS = [
-  { id: "upi", label: "UPI / PhonePe / GPay", icon: CreditCard },
-  { id: "card", label: "Credit / Debit Card", icon: CreditCard },
+  ...(ONLINE_ENABLED
+    ? [
+        { id: "upi", label: "UPI / PhonePe / GPay", icon: CreditCard },
+        { id: "card", label: "Credit / Debit Card", icon: CreditCard },
+      ]
+    : []),
   { id: "cod", label: "Cash on Delivery", icon: CreditCard },
 ];
 
@@ -30,7 +37,7 @@ export default function CheckoutPage() {
     state: "Maharashtra",
     pincode: "400001"
   });
-  const [payMethod, setPayMethod] = useState("upi");
+  const [payMethod, setPayMethod] = useState(ONLINE_ENABLED ? "upi" : "cod");
   const [couponCode, setCouponCode] = useState("");
   const [placing, setPlacing] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
@@ -121,8 +128,29 @@ export default function CheckoutPage() {
           pincode: address.pincode,
         },
       });
-      clearCart();
-      router.push(`/orders/track?id=${order.id}`);
+
+      // Cash on Delivery — nothing more to collect now.
+      if (payMethod === "cod") {
+        clearCart();
+        router.push(`/orders/track?id=${order.id}`);
+        return;
+      }
+
+      // Online payment via Razorpay. The order is already saved (pending); a
+      // dismissed/failed payment simply leaves it pending and retryable.
+      const result = await payWithRazorpay({
+        appOrderId: order.id,
+        customerName: user?.name,
+        customerEmail: user?.email,
+      });
+      if (result === "paid") {
+        clearCart();
+        router.push(`/orders/track?id=${order.id}`);
+      } else if (result === "dismissed") {
+        setError("Payment cancelled. Your order is saved as pending — retry from Orders.");
+      } else {
+        setError("Payment failed. Please try another method or retry from Orders.");
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
