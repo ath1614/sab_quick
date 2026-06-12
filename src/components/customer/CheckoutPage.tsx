@@ -32,9 +32,9 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState({
     line1: "",
     landmark: "",
-    city: "Mumbai",
-    state: "Maharashtra",
-    pincode: "400001"
+    city: "",
+    state: "",
+    pincode: "",
   });
   const [payMethod, setPayMethod] = useState(ONLINE_ENABLED ? "upi" : "cod");
   const [couponCode, setCouponCode] = useState("");
