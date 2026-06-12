@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sabquick/package-lock.json
+
+      - name: Install
+        working-directory: sabquick
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: sabquick
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: sabquick
+        run: npm run lint
+
+      - name: Test
+        working-directory: sabquick
+        run: npm test
+
+      - name: Build
+        working-directory: sabquick
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-build

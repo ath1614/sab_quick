@@ -9,12 +9,9 @@ import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { createOrder } from "@/lib/orders";
 import { payWithRazorpay, isOnlinePaymentEnabled } from "@/lib/payments-client";
+import { deliveryFeeFor } from "@/lib/pricing";
 
 const STEPS = ["Address", "Payment"];
-
-// Mirror of the server-side delivery-fee rule in place_order() so the amount
-// shown here matches what the server will actually charge.
-const deliveryFeeFor = (subtotal: number) => (subtotal >= 199 ? 0 : 25);
 
 // Online methods only appear when Razorpay is configured; COD always works.
 const ONLINE_ENABLED = isOnlinePaymentEnabled();
@@ -77,8 +74,8 @@ export default function CheckoutPage() {
           pincode: addr.postcode || "400001"
         });
       }
-    } catch (e) {
-      // Fallback if API fails
+    } catch {
+      // Fallback if API fails — keep the manually-entered/default address.
     }
   };
 
@@ -99,8 +96,10 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    // Auto-fetch location on page load
-    getLocation();
+    // Auto-fetch location on mount. Deferred to a microtask so the initial
+    // setState happens after commit, not synchronously inside the effect.
+    queueMicrotask(getLocation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const placeOrder = async () => {
