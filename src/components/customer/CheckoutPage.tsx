@@ -188,6 +188,13 @@ export default function CheckoutPage() {
         </div>
 
         <div className="px-4 mt-4 space-y-3">
+          {/* Global error banner — always visible, regardless of step */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
+              <p className="text-red-600 text-sm font-semibold text-center">{error}</p>
+            </div>
+          )}
+
           {/* Step 0 — Address (Zepto/Blinkit Style) */}
           {step === 0 && (
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
@@ -365,7 +372,6 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
               <div className="flex gap-3">
                 <button onClick={() => setStep(0)} className="flex-1 py-4 rounded-2xl bg-brand-surface text-brand-black font-bold border border-gray-200">
                   Back
