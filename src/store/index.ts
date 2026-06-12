@@ -104,8 +104,8 @@ interface BusinessStore {
 
   // Products
   addProduct: (p: Omit<Product, "id" | "rating" | "reviews">) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  updateStock: (id: string, stock: number) => void;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  updateStock: (id: string, stock: number) => Promise<void>;
 
   // Categories
   addCategory: (c: Omit<Category, "id" | "productCount">) => void;
@@ -121,8 +121,8 @@ interface BusinessStore {
 
   // Staff
   addStaffMember: (s: Omit<StaffMember, "id" | "joinedAt">) => void;
-  updateStaffPermissions: (staffId: string, permissions: Permission[]) => void;
-  toggleStaffActive: (staffId: string) => void;
+  updateStaffPermissions: (staffId: string, permissions: Permission[]) => Promise<void>;
+  toggleStaffActive: (staffId: string) => Promise<void>;
 
   // Coupons
   addCoupon: (c: Omit<Coupon, "id" | "usedCount" | "createdAt">) => Promise<void>;
@@ -152,12 +152,30 @@ export const useBusinessStore = create<BusinessStore>()(
       addProduct: (p) => set({
         products: [...get().products, { ...p, id: `p${Date.now()}`, rating: 0, reviews: 0 }],
       }),
-      updateProduct: (id, updates) => set({
-        products: get().products.map((p) => p.id === id ? { ...p, ...updates } : p),
-      }),
-      updateStock: (id, stock) => set({
-        products: get().products.map((p) => p.id === id ? { ...p, stock } : p),
-      }),
+      updateProduct: async (id, updates) => {
+        // Map camelCase app fields → snake_case DB columns (only known scalars).
+        const dbUpdates: Record<string, unknown> = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.description !== undefined) dbUpdates.description = updates.description;
+        if (updates.price !== undefined) dbUpdates.price = updates.price;
+        if (updates.mrp !== undefined) dbUpdates.mrp = updates.mrp;
+        if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
+        if (updates.stock !== undefined) dbUpdates.stock = updates.stock;
+        if (updates.eta !== undefined) dbUpdates.eta_minutes = updates.eta;
+        if (updates.image !== undefined) dbUpdates.image_url = updates.image;
+        if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
+
+        const { error } = await supabase.from("products").update(dbUpdates).eq("id", id);
+        if (!error) {
+          set({ products: get().products.map((p) => p.id === id ? { ...p, ...updates } : p) });
+        }
+      },
+      updateStock: async (id, stock) => {
+        const { error } = await supabase.from("products").update({ stock }).eq("id", id);
+        if (!error) {
+          set({ products: get().products.map((p) => p.id === id ? { ...p, stock } : p) });
+        }
+      },
 
       addCategory: (c) => set({
         categories: [...get().categories, { ...c, id: `cat${Date.now()}`, productCount: 0 }],
@@ -244,12 +262,20 @@ export const useBusinessStore = create<BusinessStore>()(
       addStaffMember: (s) => set({
         staff: [...get().staff, { ...s, id: `s${Date.now()}`, joinedAt: new Date().toISOString().split("T")[0] }],
       }),
-      updateStaffPermissions: (staffId, permissions) => set({
-        staff: get().staff.map((s) => s.id === staffId ? { ...s, permissions } : s),
-      }),
-      toggleStaffActive: (staffId) => set({
-        staff: get().staff.map((s) => s.id === staffId ? { ...s, isActive: !s.isActive } : s),
-      }),
+      updateStaffPermissions: async (staffId, permissions) => {
+        const { error } = await supabase.from("users").update({ permissions }).eq("id", staffId);
+        if (!error) {
+          set({ staff: get().staff.map((s) => s.id === staffId ? { ...s, permissions } : s) });
+        }
+      },
+      toggleStaffActive: async (staffId) => {
+        const member = get().staff.find((s) => s.id === staffId);
+        if (!member) return;
+        const { error } = await supabase.from("users").update({ is_active: !member.isActive }).eq("id", staffId);
+        if (!error) {
+          set({ staff: get().staff.map((s) => s.id === staffId ? { ...s, isActive: !s.isActive } : s) });
+        }
+      },
 
       // Coupon Functions
       addCoupon: async (c) => {

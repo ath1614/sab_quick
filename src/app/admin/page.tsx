@@ -1,2 +1,9 @@
 import AdminPanel from "@/components/admin/AdminPanel";
-export default function Admin() { return <AdminPanel />; }
+import RoleGuard from "@/components/layout/RoleGuard";
+export default function Admin() {
+  return (
+    <RoleGuard allow={["admin"]}>
+      <AdminPanel />
+    </RoleGuard>
+  );
+}

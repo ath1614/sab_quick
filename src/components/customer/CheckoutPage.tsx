@@ -9,7 +9,11 @@ import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { createOrder } from "@/lib/orders";
 
-const STEPS = ["Address", "Payment", "Confirm"];
+const STEPS = ["Address", "Payment"];
+
+// Mirror of the server-side delivery-fee rule in place_order() so the amount
+// shown here matches what the server will actually charge.
+const deliveryFeeFor = (subtotal: number) => (subtotal >= 199 ? 0 : 25);
 
 const PAY_METHODS = [
   { id: "upi", label: "UPI / PhonePe / GPay", icon: CreditCard },
@@ -27,12 +31,21 @@ export default function CheckoutPage() {
     pincode: "400001"
   });
   const [payMethod, setPayMethod] = useState("upi");
+  const [couponCode, setCouponCode] = useState("");
   const [placing, setPlacing] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [error, setError] = useState("");
   const { user } = useAuthStore();
   const { items, total, clearCart } = useCartStore();
   const router = useRouter();
+
+  const subtotal = total();
+  const deliveryFee = deliveryFeeFor(subtotal);
+
+  // Guard: never let an empty cart reach checkout.
+  useEffect(() => {
+    if (items.length === 0 && !placing) router.replace("/cart");
+  }, [items.length, placing, router]);
 
   // Reverse geocoding to get real address text from GPS coordinates
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -84,19 +97,29 @@ export default function CheckoutPage() {
   }, []);
 
   const placeOrder = async () => {
+    if (!address.line1.trim()) {
+      setError("Please enter your delivery address.");
+      setStep(0);
+      return;
+    }
+    if (!/^\d{6}$/.test(address.pincode)) {
+      setError("Please enter a valid 6-digit PIN code.");
+      setStep(0);
+      return;
+    }
     setPlacing(true);
     setError("");
     try {
+      // total is computed server-side in place_order(); not trusted from here.
       const order = await createOrder({
         items,
-        total: total(),
         paymentMethod: payMethod,
+        couponCode: couponCode.trim() || undefined,
         address: {
-          line1: `${address.line1}${address.landmark ? `, ${address.landmark}` : ''}`,
+          line1: `${address.line1}${address.landmark ? `, ${address.landmark}` : ""}`,
           city: address.city,
-          pincode: address.pincode
+          pincode: address.pincode,
         },
-        userId: user?.id,
       });
       clearCart();
       router.push(`/orders/track?id=${order.id}`);
@@ -246,6 +269,18 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
+              {/* Coupon */}
+              <div className="bg-white rounded-3xl p-4 shadow-card">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Coupon Code (Optional)</label>
+                <input
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. SAVE10"
+                  className="w-full px-4 py-3.5 rounded-xl bg-brand-surface text-sm uppercase focus:outline-none focus:ring-2 focus:ring-brand-green/20"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">Discount is verified and applied securely at checkout.</p>
+              </div>
+
               {/* Order summary */}
               <div className="bg-white rounded-3xl p-4 shadow-card">
                 <h3 className="font-bold text-brand-black mb-3">Order Summary</h3>
@@ -255,9 +290,16 @@ export default function CheckoutPage() {
                     <span className="font-semibold text-brand-black flex-shrink-0">{formatCurrency(product.price * quantity)}</span>
                   </div>
                 ))}
-                <div className="flex justify-between pt-3 mt-1">
-                  <span className="font-bold text-brand-black">Total</span>
-                  <span className="font-black text-brand-green text-lg">{formatCurrency(total())}</span>
+                <div className="flex justify-between text-sm pt-2.5 text-gray-500">
+                  <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm pt-1 text-gray-500">
+                  <span>Delivery Fee</span>
+                  <span>{deliveryFee === 0 ? "FREE" : formatCurrency(deliveryFee)}</span>
+                </div>
+                <div className="flex justify-between pt-3 mt-1 border-t border-gray-100">
+                  <span className="font-bold text-brand-black">Total{couponCode ? " (before coupon)" : ""}</span>
+                  <span className="font-black text-brand-green text-lg">{formatCurrency(subtotal + deliveryFee)}</span>
                 </div>
               </div>
 
@@ -272,7 +314,7 @@ export default function CheckoutPage() {
                   {placing ? (
                     <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Placing...</>
                   ) : (
-                    <>Place Order · {formatCurrency(total())}</>
+                    <>Place Order · {formatCurrency(subtotal + deliveryFee)}</>
                   )}
                 </motion.button>
               </div>

@@ -1,60 +1,41 @@
 import { supabase } from "@/lib/supabase";
 import type { CartItem } from "@/types";
 
+/**
+ * Place an order via the server-side `place_order` RPC.
+ *
+ * The total is computed ON THE SERVER from the trusted `products.price`
+ * column — the client can no longer dictate the amount it pays. Items are
+ * inserted and stock is decremented atomically inside the same transaction,
+ * so a half-written order can never exist. See
+ * supabase/migrations/0001_production_hardening.sql.
+ */
 export async function createOrder({
   items,
-  total,
   paymentMethod,
   address,
-  userId,
+  couponCode,
 }: {
   items: CartItem[];
-  total: number;
   paymentMethod: string;
   address: { line1: string; city: string; pincode: string };
+  couponCode?: string;
+  /** total is intentionally ignored server-side; kept optional for callers */
+  total?: number;
   userId?: string;
 }) {
-  // 1. Insert order
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      user_id: userId,
-      status: "new",
-      subtotal: total,
-      total,
-      payment_method: paymentMethod,
-      payment_status: paymentMethod === "cod" ? "pending" : "paid",
-      address_line1: address.line1,
-      address_city: address.city,
-      address_pincode: address.pincode,
-    })
-    .select()
-    .single();
+  const { data: orderId, error } = await supabase.rpc("place_order", {
+    p_items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
+    p_address_line1: address.line1,
+    p_address_city: address.city,
+    p_address_pincode: address.pincode,
+    p_payment_method: paymentMethod,
+    p_coupon_code: couponCode ?? null,
+  });
 
-  if (orderError || !order) throw new Error(orderError?.message ?? "Order creation failed");
-
-  // 2. Insert order items
-  const orderItems = items.map((item) => ({
-    order_id: order.id,
-    product_id: item.product.id,
-    quantity: item.quantity,
-    unit_price: item.product.price,
-    total_price: item.product.price * item.quantity,
-  }));
-
-  const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-  if (itemsError) throw new Error(itemsError.message);
-
-  // 3. Decrement stock for each product
-  for (const item of items) {
-    await supabase.rpc("decrement_stock", {
-      p_id: item.product.id,
-      qty: item.quantity,
-    }).then(({ error }) => {
-      // Non-fatal if RPC doesn't exist yet — stock update is best-effort
-      if (error) console.warn("Stock decrement skipped:", error.message);
-    });
+  if (error || !orderId) {
+    throw new Error(error?.message ?? "Order creation failed");
   }
 
-  return order;
+  return { id: orderId as string };
 }

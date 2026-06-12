@@ -230,6 +230,8 @@ export default function AuthPage() {
                   ) : "Sign In"}
                 </motion.button>
 
+                {process.env.NEXT_PUBLIC_ENABLE_DEMO === "true" && (
+                <>
                 <div className="my-6 flex items-center">
                   <div className="flex-1 h-px bg-gray-200" />
                   <span className="mx-4 text-gray-400 text-xs font-bold uppercase">Quick Demo Login</span>
@@ -282,6 +284,8 @@ export default function AuthPage() {
                     🟣 Login as Delivery
                   </motion.button>
                 </div>
+                </>
+                )}
               </form>
             </motion.div>
           ) : (

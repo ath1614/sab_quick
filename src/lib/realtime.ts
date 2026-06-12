@@ -63,7 +63,8 @@ export function useRealtimeSubscriptions() {
               order_items (
                 *,
                 products (*)
-              )
+              ),
+              users:user_id ( name, phone )
             `);
 
           if (ordersData) {
@@ -86,8 +87,8 @@ export function useRealtimeSubscriptions() {
               return {
                 id: order.id,
                 userId: order.user_id,
-                customerName: "Customer",
-                customerPhone: "",
+                customerName: order.users?.name || "Customer",
+                customerPhone: order.users?.phone || "",
                 status: order.status as Order["status"],
                 total: order.total,
                 items: items,

@@ -1,6 +1,10 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/**
+ * Supabase client for Server Components, Route Handlers and Server Actions.
+ * Uses the modern getAll/setAll cookie API (@supabase/ssr >= 0.12).
+ */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
 
@@ -9,21 +13,17 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        setAll(cookiesToSet) {
           try {
-            cookieStore.set({ name, value, ...options });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
           } catch {
-            // Ignore if set from Server Component
-          }
-        },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value: "", ...options });
-          } catch {
-            // Ignore if remove from Server Component
+            // Called from a Server Component — safe to ignore; the session is
+            // refreshed by proxy.ts instead.
           }
         },
       },

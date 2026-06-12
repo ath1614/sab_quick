@@ -1,2 +1,9 @@
 import OwnerDashboard from "@/components/owner/OwnerDashboard";
-export default function Owner() { return <OwnerDashboard />; }
+import RoleGuard from "@/components/layout/RoleGuard";
+export default function Owner() {
+  return (
+    <RoleGuard allow={["owner", "admin"]}>
+      <OwnerDashboard />
+    </RoleGuard>
+  );
+}
