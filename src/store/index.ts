@@ -76,6 +76,25 @@ export const useAppStore = create<AppStore>()(
   )
 );
 
+// ─── Delivery location (shared between home header & checkout) ─────────────────
+interface LocationStore {
+  label: string | null;   // e.g. "Andheri West"
+  city: string | null;
+  pincode: string | null;
+  setLocation: (loc: { label?: string; city?: string; pincode?: string }) => void;
+}
+export const useLocationStore = create<LocationStore>()(
+  persist(
+    (set) => ({
+      label: null,
+      city: null,
+      pincode: null,
+      setLocation: (loc) => set((s) => ({ ...s, ...loc })),
+    }),
+    { name: "sab-location" }
+  )
+);
+
 // ─── Business (products, categories, orders, staff) ───────────────────────────
 interface BusinessStore {
   products: Product[];

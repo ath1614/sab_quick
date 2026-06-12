@@ -76,10 +76,12 @@ export async function getRoute(from: LatLng, to: LatLng): Promise<RouteResult | 
 }
 
 export interface GeoSuggestion {
-  label: string;
+  label: string;   // full place name, for the dropdown
+  line1: string;   // street / house+road, for the address field
   lat: number;
   lng: number;
   city?: string;
+  state?: string;
   pincode?: string;
 }
 
@@ -96,11 +98,14 @@ export async function geocodeSearch(query: string): Promise<GeoSuggestion[]> {
     return (data.features ?? []).map((f: any): GeoSuggestion => {
       const ctx: any[] = f.context ?? [];
       const find = (k: string) => ctx.find((c) => String(c.id).startsWith(k))?.text;
+      const street = [f.address, f.text].filter(Boolean).join(" ");
       return {
-        label: f.place_name,
+        label: f.place_name ?? f.text,
+        line1: street || f.text || "",
         lng: f.center?.[0],
         lat: f.center?.[1],
-        city: find("place") || find("locality"),
+        city: find("place") || find("locality") || find("district"),
+        state: find("region"),
         pincode: find("postcode"),
       };
     });

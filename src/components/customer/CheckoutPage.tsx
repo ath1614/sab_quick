@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { useCartStore, useAuthStore } from "@/store";
+import { useCartStore, useAuthStore, useLocationStore } from "@/store";
+import { reverseGeocode as resolveAddress } from "@/lib/geo";
 import { formatCurrency } from "@/lib/utils";
 import { MapPin, CreditCard, CheckCircle, ArrowRight, LocateFixed, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -52,13 +53,17 @@ export default function CheckoutPage() {
     }, 300);
   };
 
+  const setLocation = useLocationStore((s) => s.setLocation);
+
   const pickSuggestion = (s: GeoSuggestion) => {
     setAddress((a) => ({
       ...a,
-      line1: s.label,
+      line1: s.line1 || s.label,
       city: s.city || a.city,
+      state: s.state || a.state,
       pincode: s.pincode || a.pincode,
     }));
+    setLocation({ label: s.city || s.line1, city: s.city, pincode: s.pincode });
     setAddrQuery("");
     setSuggestions([]);
   };
@@ -74,42 +79,24 @@ export default function CheckoutPage() {
     if (items.length === 0 && !placing) router.replace("/cart");
   }, [items.length, placing, router]);
 
-  // Reverse geocoding to get real address text from GPS coordinates
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      // Use OpenStreetMap Nominatim API for free reverse geocoding
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        { headers: { "Accept-Language": "en" } }
-      );
-      const data = await res.json();
-      if (data.address) {
-        const addr = data.address;
-        const line1 = [
-          addr.house_number, addr.road, addr.suburb, addr.neighbourhood
-        ].filter(Boolean).join(", ");
-        
-        setAddress({
-          line1: line1 || "📍 My Current Location",
-          landmark: addr.landmark || addr.poi || "",
-          city: addr.city || addr.town || addr.district || "Mumbai",
-          state: addr.state || "Maharashtra",
-          pincode: addr.postcode || "400001"
-        });
-      }
-    } catch {
-      // Fallback if API fails — keep the manually-entered/default address.
-    }
-  };
-
-  // Fetch GPS location and reverse geocode
+  // Fetch GPS location, reverse-geocode it, and fill the address + location store.
   const getLocation = () => {
     if (!navigator.geolocation) return;
-    
+
     setFetchingLocation(true);
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        await reverseGeocode(position.coords.latitude, position.coords.longitude);
+        const r = await resolveAddress(position.coords.latitude, position.coords.longitude);
+        if (r) {
+          setAddress((a) => ({
+            ...a,
+            line1: r.line1 || a.line1,
+            city: r.city || a.city,
+            state: r.state || a.state,
+            pincode: r.pincode || a.pincode,
+          }));
+          setLocation({ label: r.city || r.line1, city: r.city, pincode: r.pincode });
+        }
         setFetchingLocation(false);
       },
       () => {

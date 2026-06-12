@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Search, Bell, MapPin, ChevronRight, Zap, ShoppingCart } from "lucide-react";
-import { useAuthStore, useCartStore, useBusinessStore } from "@/store";
+import { useAuthStore, useCartStore, useBusinessStore, useLocationStore } from "@/store";
+import { reverseGeocode } from "@/lib/geo";
 import ProductCard from "@/components/ui/ProductCard";
 import CartSheet from "@/components/customer/CartSheet";
 import BottomNav from "@/components/layout/BottomNav";
@@ -28,6 +29,18 @@ export default function HomePage() {
   const headerOpacity = useTransform(scrollY, [0, 120], [1, 0.96]);
 
   const firstName = user?.name?.split(" ")[0] ?? "there";
+
+  // Delivery location shown in the header — detect once via GPS if unknown.
+  const { city, pincode, setLocation } = useLocationStore();
+  useEffect(() => {
+    if (city || typeof navigator === "undefined" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const r = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      if (r?.city) setLocation({ label: r.city, city: r.city, pincode: r.pincode });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const locationLabel = city ? `${city}${pincode ? ` ${pincode}` : ""}` : "Set your location";
 
   const filteredProducts = activeCategory === "all"
     ? products
@@ -100,7 +113,7 @@ export default function HomePage() {
               <p className="text-[10px] text-white/50 font-medium uppercase tracking-widest flex items-center gap-1">
                 <MapPin size={8} className="text-brand-green" /> Delivering to
               </p>
-              <p className="font-bold text-white text-xs leading-tight">Mumbai 400001</p>
+              <p className="font-bold text-white text-xs leading-tight">{locationLabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-2.5">
