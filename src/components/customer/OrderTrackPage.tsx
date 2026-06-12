@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { CheckCircle, Package, Truck, Phone } from "lucide-react";
@@ -7,6 +7,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useBusinessStore } from "@/store";
 import { useOrderLocation } from "@/hooks/useDeliveryLocation";
+import { getRoute, type RouteResult } from "@/lib/maps";
 import LiveMap from "@/components/shared/LiveMap";
 import type { Order } from "@/types";
 
@@ -36,14 +37,31 @@ export default function OrderTrackPage() {
 
   const order = useMemo(() => orders.find((o) => o.id === id), [orders, id]);
   const driverLocation = useOrderLocation(id);
-  const destination =
-    order?.address?.lat != null && order?.address?.lng != null
-      ? { lat: order.address.lat, lng: order.address.lng }
-      : null;
+  const destination = useMemo(
+    () =>
+      order?.address?.lat != null && order?.address?.lng != null
+        ? { lat: order.address.lat, lng: order.address.lng }
+        : null,
+    [order]
+  );
+
+  // Real road-network route/ETA when both ends are known (and Mapbox is on).
+  const [route, setRoute] = useState<RouteResult | null>(null);
+  useEffect(() => {
+    if (!driverLocation || !destination) return;
+    let cancelled = false;
+    getRoute(driverLocation, destination).then((r) => {
+      if (!cancelled) setRoute(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [driverLocation, destination]);
+  const liveRoute = driverLocation && destination ? route : null;
 
   const currentStep = order ? STEP_BY_STATUS[order.status] ?? 0 : 0;
   const isRejected = order?.status === "rejected";
-  const eta = order?.eta ?? Math.max(0, 10 - currentStep * 2.5);
+  const eta = liveRoute?.durationMin ?? order?.eta ?? Math.max(0, 10 - currentStep * 2.5);
   const shortId = id ? `#${id.slice(0, 8).toUpperCase()}` : "—";
 
   return (
@@ -65,6 +83,7 @@ export default function OrderTrackPage() {
               <LiveMap
                 driver={driverLocation}
                 destination={destination}
+                route={liveRoute?.coordinates}
                 className="absolute inset-0 w-full h-full"
               />
               <div className="absolute bottom-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-card flex items-center gap-2 z-10">

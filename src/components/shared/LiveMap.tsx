@@ -7,6 +7,7 @@ import { loadMapbox, mapsEnabled } from "@/lib/maps";
 interface Props {
   driver?: { lat: number; lng: number } | null;
   destination?: { lat: number; lng: number } | null;
+  route?: [number, number][] | null; // [lng, lat] polyline
   className?: string;
 }
 
@@ -14,7 +15,7 @@ interface Props {
  * Live map. Renders a real Mapbox map when NEXT_PUBLIC_MAPBOX_TOKEN is set,
  * otherwise falls back to the styled placeholder so the UI is unaffected.
  */
-export default function LiveMap({ driver, destination, className }: Props) {
+export default function LiveMap({ driver, destination, route, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const driverMarker = useRef<any>(null);
@@ -67,6 +68,36 @@ export default function LiveMap({ driver, destination, className }: Props) {
       destMarker.current.setLngLat([destination.lng, destination.lat]).addTo(map);
     }
   }, [driver, destination]);
+
+  // Draw / update the route polyline.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !route || route.length === 0) return;
+
+    const draw = () => {
+      const data = {
+        type: "Feature" as const,
+        properties: {},
+        geometry: { type: "LineString" as const, coordinates: route },
+      };
+      const src = map.getSource("route");
+      if (src) {
+        src.setData(data);
+      } else {
+        map.addSource("route", { type: "geojson", data });
+        map.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: { "line-color": "#2CA01C", "line-width": 4 },
+        });
+      }
+    };
+
+    if (map.isStyleLoaded()) draw();
+    else map.once("load", draw);
+  }, [route]);
 
   if (mapsEnabled()) {
     return <div ref={containerRef} className={className} />;

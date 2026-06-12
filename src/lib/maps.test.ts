@@ -45,3 +45,34 @@ describe("geocodeSearch", () => {
     expect(out[0]).toMatchObject({ city: "Mumbai", pincode: "400053", lat: 19.13, lng: 72.83 });
   });
 });
+
+describe("getRoute", () => {
+  it("returns null without a token", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MAPBOX_TOKEN", "");
+    const { getRoute } = await import("@/lib/maps");
+    expect(await getRoute({ lat: 1, lng: 1 }, { lat: 2, lng: 2 })).toBeNull();
+  });
+
+  it("parses Mapbox Directions distance/duration/geometry", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MAPBOX_TOKEN", "tok");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          routes: [
+            {
+              distance: 3200,
+              duration: 600,
+              geometry: { type: "LineString", coordinates: [[72.8, 19.0], [72.83, 19.13]] },
+            },
+          ],
+        }),
+      })
+    );
+    const { getRoute } = await import("@/lib/maps");
+    const r = await getRoute({ lat: 19.0, lng: 72.8 }, { lat: 19.13, lng: 72.83 });
+    expect(r).toMatchObject({ distanceKm: 3.2, durationMin: 10 });
+    expect(r?.coordinates).toHaveLength(2);
+  });
+});

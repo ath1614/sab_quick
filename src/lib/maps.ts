@@ -38,6 +38,43 @@ export function loadMapbox(): Promise<any> {
   return loaderPromise;
 }
 
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface RouteResult {
+  distanceKm: number;
+  durationMin: number;
+  coordinates: [number, number][]; // [lng, lat] pairs for the route polyline
+}
+
+/**
+ * Road-network route between two points via the Mapbox Directions API.
+ * Returns real driving distance/time + the route geometry. null without a token.
+ */
+export async function getRoute(from: LatLng, to: LatLng): Promise<RouteResult | null> {
+  if (!MAPBOX_TOKEN) return null;
+  try {
+    const url =
+      `https://api.mapbox.com/directions/v5/mapbox/driving/` +
+      `${from.lng},${from.lat};${to.lng},${to.lat}` +
+      `?access_token=${MAPBOX_TOKEN}&geometries=geojson&overview=full`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const route = data.routes?.[0];
+    if (!route) return null;
+    return {
+      distanceKm: route.distance / 1000,
+      durationMin: Math.max(1, Math.round(route.duration / 60)),
+      coordinates: route.geometry?.coordinates ?? [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export interface GeoSuggestion {
   label: string;
   lat: number;
