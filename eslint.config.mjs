@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // E2E runs under Playwright, not part of the app lint/typecheck.
+    "e2e/**",
+    "playwright.config.ts",
   ]),
 ]);
 
