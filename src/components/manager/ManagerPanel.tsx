@@ -22,9 +22,10 @@ export default function ManagerPanel() {
   const [stockEditing, setStockEditing] = useState<string | null>(null);
   const [stockValue, setStockValue] = useState(0);
 
-  // Get this manager's permissions from staff list
+  // Get this manager's permissions from staff list (fallback to auth user)
   const staffRecord = staff.find((s) => s.email === user?.email);
-  const permissions: Permission[] = staffRecord?.permissions ?? ["view_orders", "view_analytics"];
+  const permissions: Permission[] =
+    staffRecord?.permissions ?? user?.permissions ?? ["view_orders", "view_analytics"];
 
   const newOrders = orders.filter((o) => o.status === "new").length;
   const todayRevenue = orders.filter((o) => o.status !== "rejected").reduce((s, o) => s + o.total, 0);

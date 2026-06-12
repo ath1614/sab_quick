@@ -30,7 +30,9 @@ function AuthListener() {
             id: profile.id,
             name: profile.name,
             email: profile.email,
-            role: profile.role as "customer" | "delivery" | "staff" | "manager" | "owner" | "admin"
+            role: profile.role as "customer" | "delivery" | "staff" | "manager" | "owner" | "admin",
+            phone: profile.phone ?? undefined,
+            permissions: profile.permissions ?? [],
           }, session);
         }
       } else {

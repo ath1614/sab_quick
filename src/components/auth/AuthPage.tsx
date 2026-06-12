@@ -84,7 +84,9 @@ export default function AuthPage() {
         id: profile.id,
         name: profile.name,
         email: profile.email,
-        role: profile.role as Role
+        role: profile.role as Role,
+        phone: profile.phone ?? undefined,
+        permissions: profile.permissions ?? [],
       }, authData.session);
 
       router.push(ROLE_ROUTES[profile.role as Role] ?? "/home");

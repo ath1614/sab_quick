@@ -21,7 +21,8 @@ export default function StaffPanel() {
   const [stockValue, setStockValue] = useState(0);
 
   const staffRecord = staff.find((s) => s.email === user?.email);
-  const permissions: Permission[] = staffRecord?.permissions ?? ["view_orders", "reject_items", "manage_stock"];
+  const permissions: Permission[] =
+    staffRecord?.permissions ?? user?.permissions ?? ["view_orders", "reject_items", "manage_stock"];
 
   const lowStock = products.filter((p) => p.stock < 15);
 
