@@ -103,24 +103,24 @@ interface BusinessStore {
   setDeliveryPartners: (partners: User[]) => void;
 
   // Products
-  addProduct: (p: Omit<Product, "id" | "rating" | "reviews">) => void;
+  addProduct: (p: Omit<Product, "id" | "rating" | "reviews">) => Promise<void>;
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   updateStock: (id: string, stock: number) => Promise<void>;
 
   // Categories
-  addCategory: (c: Omit<Category, "id" | "productCount">) => void;
-  updateCategory: (id: string, updates: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  addCategory: (c: Omit<Category, "id" | "productCount">) => Promise<void>;
+  updateCategory: (id: string, updates: Partial<Category>) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 
   // Orders
   acceptOrder: (orderId: string) => Promise<void>;
   rejectOrder: (orderId: string, reason: string) => Promise<void>;
-  rejectOrderItem: (orderId: string, productId: string, reason: string) => void;
+  rejectOrderItem: (orderId: string, productId: string, reason: string) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order["status"]) => Promise<void>;
   assignDeliveryPartner: (orderId: string, partnerId: string) => Promise<void>;
 
   // Staff
-  addStaffMember: (s: Omit<StaffMember, "id" | "joinedAt">) => void;
+  addStaffMember: (s: Omit<StaffMember, "id" | "joinedAt">) => Promise<string | null>;
   updateStaffPermissions: (staffId: string, permissions: Permission[]) => Promise<void>;
   toggleStaffActive: (staffId: string) => Promise<void>;
 
@@ -149,9 +149,34 @@ export const useBusinessStore = create<BusinessStore>()(
       setCoupons: (coupons) => set({ coupons }),
       setDeliveryPartners: (partners) => set({ deliveryPartners: partners }),
 
-      addProduct: (p) => set({
-        products: [...get().products, { ...p, id: `p${Date.now()}`, rating: 0, reviews: 0 }],
-      }),
+      addProduct: async (p) => {
+        // Resolve the category name/slug to a category_id for the FK.
+        const cat = get().categories.find(
+          (c) => c.name === p.category || c.slug === p.category || c.id === p.category
+        );
+        const { data, error } = await supabase
+          .from("products")
+          .insert({
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            mrp: p.mrp,
+            image_url: p.image,
+            category_id: cat?.id ?? null,
+            unit: p.unit,
+            stock: p.stock,
+            eta_minutes: p.eta,
+            is_active: p.isActive,
+          })
+          .select()
+          .single();
+
+        if (!error && data) {
+          set({
+            products: [...get().products, { ...p, id: data.id, rating: 0, reviews: 0 }],
+          });
+        }
+      },
       updateProduct: async (id, updates) => {
         // Map camelCase app fields → snake_case DB columns (only known scalars).
         const dbUpdates: Record<string, unknown> = {};
@@ -177,15 +202,32 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
 
-      addCategory: (c) => set({
-        categories: [...get().categories, { ...c, id: `cat${Date.now()}`, productCount: 0 }],
-      }),
-      updateCategory: (id, updates) => set({
-        categories: get().categories.map((c) => c.id === id ? { ...c, ...updates } : c),
-      }),
-      deleteCategory: (id) => set({
-        categories: get().categories.filter((c) => c.id !== id),
-      }),
+      addCategory: async (c) => {
+        const { data, error } = await supabase
+          .from("categories")
+          .insert({ name: c.name, slug: c.slug, image_url: c.image })
+          .select()
+          .single();
+        if (!error && data) {
+          set({ categories: [...get().categories, { ...c, id: data.id, productCount: 0 }] });
+        }
+      },
+      updateCategory: async (id, updates) => {
+        const dbUpdates: Record<string, unknown> = {};
+        if (updates.name !== undefined) dbUpdates.name = updates.name;
+        if (updates.slug !== undefined) dbUpdates.slug = updates.slug;
+        if (updates.image !== undefined) dbUpdates.image_url = updates.image;
+        const { error } = await supabase.from("categories").update(dbUpdates).eq("id", id);
+        if (!error) {
+          set({ categories: get().categories.map((c) => c.id === id ? { ...c, ...updates } : c) });
+        }
+      },
+      deleteCategory: async (id) => {
+        const { error } = await supabase.from("categories").delete().eq("id", id);
+        if (!error) {
+          set({ categories: get().categories.filter((c) => c.id !== id) });
+        }
+      },
 
       acceptOrder: async (orderId) => {
         const { error } = await supabase
@@ -217,22 +259,30 @@ export const useBusinessStore = create<BusinessStore>()(
           });
         }
       },
-      rejectOrderItem: (orderId, productId, reason) => {
-        // This would require a more complex DB update for order_items
-        set({
-          orders: get().orders.map((o) =>
-            o.id === orderId
-              ? {
-                  ...o,
-                  items: o.items.map((i) =>
-                    i.product.id === productId
-                      ? { ...i, status: "rejected" as const, rejectionReason: reason }
-                      : i
-                  ),
-                }
-              : o
-          ),
-        });
+      rejectOrderItem: async (orderId, productId, reason) => {
+        // order_items has no reason column (schema), so persist the status and
+        // keep the reason in local state for the UI.
+        const { error } = await supabase
+          .from("order_items")
+          .update({ status: "rejected" })
+          .eq("order_id", orderId)
+          .eq("product_id", productId);
+        if (!error) {
+          set({
+            orders: get().orders.map((o) =>
+              o.id === orderId
+                ? {
+                    ...o,
+                    items: o.items.map((i) =>
+                      i.product.id === productId
+                        ? { ...i, status: "rejected" as const, rejectionReason: reason }
+                        : i
+                    ),
+                  }
+                : o
+            ),
+          });
+        }
       },
       updateOrderStatus: async (orderId, status) => {
         const { error } = await supabase
@@ -259,9 +309,28 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
 
-      addStaffMember: (s) => set({
-        staff: [...get().staff, { ...s, id: `s${Date.now()}`, joinedAt: new Date().toISOString().split("T")[0] }],
-      }),
+      addStaffMember: async (s) => {
+        const res = await fetch("/api/staff/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: s.name,
+            email: s.email,
+            phone: s.phone,
+            role: s.role,
+            permissions: s.permissions,
+          }),
+        });
+        if (!res.ok) return null;
+        const { id, tempPassword } = await res.json();
+        set({
+          staff: [
+            ...get().staff,
+            { ...s, id, joinedAt: new Date().toISOString().split("T")[0] },
+          ],
+        });
+        return tempPassword as string;
+      },
       updateStaffPermissions: async (staffId, permissions) => {
         const { error } = await supabase.from("users").update({ permissions }).eq("id", staffId);
         if (!error) {
