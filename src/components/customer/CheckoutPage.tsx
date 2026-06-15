@@ -76,15 +76,22 @@ export default function CheckoutPage() {
 
   // Wait for the persisted cart to finish hydrating before judging it "empty",
   // otherwise a reload/direct-open of /checkout wrongly bounces to /cart.
-  const [cartReady, setCartReady] = useState(
-    () => typeof window !== "undefined" && useCartStore.persist.hasHydrated()
-  );
-  useEffect(() => useCartStore.persist.onFinishHydration(() => setCartReady(true)), []);
-
-  // Guard: never let a genuinely-empty cart reach checkout (post-hydration only).
+  // Guard: only redirect once we're confident the persisted cart has settled.
+  // (hasHydrated() can be true while the items selector still reads empty on the
+  // first client render, so we wait a beat after mount before judging.)
+  const [cartChecked, setCartChecked] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
   useEffect(() => {
-    if (cartReady && items.length === 0 && !placing) router.replace("/cart");
-  }, [cartReady, items.length, placing, router]);
+    const t = setTimeout(() => setCartChecked(true), 600);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    // Don't bounce to /cart after a successful order clears the cart — that
+    // would override the navigation to the tracking page.
+    if (cartChecked && items.length === 0 && !placing && !orderPlaced) {
+      router.replace("/cart");
+    }
+  }, [cartChecked, items.length, placing, orderPlaced, router]);
 
   // Fetch GPS location, reverse-geocode it, and fill the address + location store.
   const getLocation = () => {
@@ -147,6 +154,7 @@ export default function CheckoutPage() {
 
       // Cash on Delivery — nothing more to collect now.
       if (payMethod === "cod") {
+        setOrderPlaced(true);
         clearCart();
         router.push(`/orders/track?id=${order.id}`);
         return;
@@ -160,6 +168,7 @@ export default function CheckoutPage() {
         customerEmail: user?.email,
       });
       if (result === "paid") {
+        setOrderPlaced(true);
         clearCart();
         router.push(`/orders/track?id=${order.id}`);
       } else if (result === "dismissed") {

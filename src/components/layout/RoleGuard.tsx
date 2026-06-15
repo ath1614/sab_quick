@@ -29,21 +29,24 @@ export default function RoleGuard({
   const router = useRouter();
 
   // Wait for the persisted auth store to hydrate before redirecting.
-  const [ready, setReady] = useState(
-    () => typeof window !== "undefined" && useAuthStore.persist.hasHydrated()
-  );
-  useEffect(() => useAuthStore.persist.onFinishHydration(() => setReady(true)), []);
+  // Wait a beat after mount before redirecting (auth store selector can read
+  // null/stale on the first client render even with a valid session).
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setChecked(true), 600);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!checked) return;
     if (!user) {
       router.replace("/auth");
     } else if (!allow.includes(user.role)) {
       router.replace(HOME[user.role] ?? "/home");
     }
-  }, [ready, user, allow, router]);
+  }, [checked, user, allow, router]);
 
-  if (!ready || !user || !allow.includes(user.role)) {
+  if (!user || !allow.includes(user.role)) {
     return <div style={{ position: "fixed", inset: 0, background: "#fff" }} />;
   }
   return <>{children}</>;
