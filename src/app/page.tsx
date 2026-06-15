@@ -20,11 +20,17 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (splashDone && onboardingDone) {
-      if (user) router.replace(ROLE_ROUTES[user.role] ?? "/home");
-      else router.replace("/auth");
+    // A logged-in user landing on "/" (e.g. via the back button from a
+    // dashboard) goes straight to their role home — no splash, no white flash.
+    if (user) {
+      router.replace(ROLE_ROUTES[user.role] ?? "/home");
+      return;
     }
+    if (splashDone && onboardingDone) router.replace("/auth");
   }, [splashDone, onboardingDone, user, router]);
+
+  // Logged-in users are redirecting away — don't show splash/onboarding to them.
+  if (user) return <div style={{ position: "fixed", inset: 0, background: "#F7F8F9" }} />;
 
   // Always show splash on every fresh load
   if (!splashDone) return <SplashScreen />;

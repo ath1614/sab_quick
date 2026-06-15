@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,12 +39,12 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const setUser = useAuthStore((s) => s.setUser);
-  const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
-  useEffect(() => {
-    if (user) router.replace(ROLE_ROUTES[user.role] ?? "/home");
-  }, [user, router]);
+  // Note: an already-authenticated user never reaches this page — proxy.ts
+  // redirects /auth -> / (which routes to their role home). Navigation after a
+  // successful login is handled explicitly in the submit handlers below (push,
+  // so /auth stays in history and the back button behaves).
 
   const { register: registerLogin, handleSubmit: handleSubmitLogin, formState: { errors: errorsLogin } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),

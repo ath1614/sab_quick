@@ -60,3 +60,24 @@ test("customer: full COD checkout reaches the tracking page", async ({ page }) =
   await page.getByRole("button", { name: /place order/i }).click({ force: true });
   await expect(page).toHaveURL(/\/orders\/track/, { timeout: 25000 });
 });
+
+test("staff: browser back from dashboard does not land on customer page or white screen", async ({ page }) => {
+  // Realistic entry: land on the app root first (onboarding already seen),
+  // which routes an unauthenticated user to /auth — so there's real history.
+  await page.addInitScript(() => {
+    localStorage.setItem("sab-app", JSON.stringify({ state: { onboardingDone: true }, version: 0 }));
+  });
+  await page.goto("/");
+  await page.waitForURL(/\/auth/, { timeout: 20000 });
+  await page.getByPlaceholder("Email address").fill(ACCT.staff);
+  await page.getByPlaceholder("Password").fill(PW);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/staff/, { timeout: 20000 });
+
+  await page.goBack();
+  await page.waitForTimeout(3000);
+  const url = page.url();
+  expect(url).not.toMatch(/\/home/); // not the customer page
+  const bodyText = (await page.locator("body").innerText()).trim();
+  expect(bodyText.length).toBeGreaterThan(0); // not a white/blank screen
+});

@@ -55,10 +55,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Authenticated user hitting /auth → send to home
+  // Authenticated user hitting /auth → send to the root, which redirects to
+  // the correct role home (proxy can't know the role without a DB hit).
   if (user && pathname === "/auth") {
     const url = request.nextUrl.clone();
-    url.pathname = "/home";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
