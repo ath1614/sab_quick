@@ -1,0 +1,62 @@
+import { test, expect, type Page } from "@playwright/test";
+
+// Frontend click-through against the LIVE site, one per role.
+// Run: E2E_BASE_URL=https://sab-quick.vercel.app npx playwright test e2e/frontend.spec.ts --project=chromium
+const PW = "Demo@1234";
+const ACCT = {
+  owner: "demo.owner@sabquick.app",
+  manager: "demo.manager@sabquick.app",
+  staff: "demo.staff@sabquick.app",
+  delivery: "demo.delivery@sabquick.app",
+  customer: "demo.customer@sabquick.app",
+};
+
+async function login(page: Page, email: string) {
+  await page.goto("/auth");
+  await page.getByPlaceholder("Email address").fill(email);
+  await page.getByPlaceholder("Password").fill(PW);
+  await page.getByRole("button", { name: /sign in/i }).click();
+}
+
+test.describe("role logins land on the right dashboard", () => {
+  for (const [role, email] of Object.entries(ACCT)) {
+    test(`${role} can log in`, async ({ page }) => {
+      await login(page, email);
+      const expectedPath = role === "customer" ? "/home" : `/${role}`;
+      await expect(page).toHaveURL(new RegExp(expectedPath.replace("/", "\\/")), { timeout: 20000 });
+    });
+  }
+});
+
+test("customer: home shows real products, detail sheet + recommendations, add to cart", async ({ page }) => {
+  await login(page, ACCT.customer);
+  await expect(page).toHaveURL(/\/home/, { timeout: 20000 });
+  // real product prices render (₹)
+  await expect(page.getByText("₹", { exact: false }).first()).toBeVisible({ timeout: 20000 });
+  // open a product detail by tapping the first product image
+  await page.locator("img[alt]").nth(1).click();
+  await expect(page.getByText(/you may also like/i)).toBeVisible({ timeout: 15000 });
+  // add to cart from the sheet
+  await page.getByRole("button", { name: /add to cart/i }).first().click();
+});
+
+test("customer: full COD checkout reaches the tracking page", async ({ page }) => {
+  // No geolocation granted -> GPS auto-fetch fails fast and won't overwrite fields.
+  await login(page, ACCT.customer);
+  await expect(page).toHaveURL(/\/home/, { timeout: 20000 });
+  await page.locator("img[alt]").nth(1).click();
+  await page.getByRole("button", { name: /add to cart/i }).first().click();
+  await page.waitForTimeout(600);
+  await page.goto("/checkout");
+  await expect(page).toHaveURL(/\/checkout/, { timeout: 20000 });
+  await page.waitForTimeout(1500); // let the GPS attempt resolve/fail
+  await page.getByPlaceholder(/Green Avenue/i).fill("12 Test Street, Andheri");
+  await page.getByPlaceholder("Mumbai").fill("Mumbai");
+  await page.getByPlaceholder("400001").fill("400053");
+  await page.getByRole("button", { name: /continue to payment/i }).click({ force: true });
+  await page.waitForTimeout(1000);
+  await page.getByRole("button").filter({ hasText: /cash on delivery/i }).click({ force: true });
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: /place order/i }).click({ force: true });
+  await expect(page).toHaveURL(/\/orders\/track/, { timeout: 25000 });
+});

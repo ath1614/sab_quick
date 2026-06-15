@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store";
 
@@ -7,10 +7,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!user) router.replace("/auth");
-  }, [user, router]);
+  // Don't judge auth until the persisted store has hydrated, otherwise a
+  // reload of a protected page bounces a logged-in user to /auth.
+  const [ready, setReady] = useState(
+    () => typeof window !== "undefined" && useAuthStore.persist.hasHydrated()
+  );
+  useEffect(() => useAuthStore.persist.onFinishHydration(() => setReady(true)), []);
 
-  if (!user) return <div style={{ position: "fixed", inset: 0, background: "#fff" }} />;
+  useEffect(() => {
+    if (ready && !user) router.replace("/auth");
+  }, [ready, user, router]);
+
+  if (!ready || !user) return <div style={{ position: "fixed", inset: 0, background: "#fff" }} />;
   return <>{children}</>;
 }

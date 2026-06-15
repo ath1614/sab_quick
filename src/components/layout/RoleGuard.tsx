@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store";
 import type { Role } from "@/lib/constants";
@@ -28,15 +28,22 @@ export default function RoleGuard({
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
 
+  // Wait for the persisted auth store to hydrate before redirecting.
+  const [ready, setReady] = useState(
+    () => typeof window !== "undefined" && useAuthStore.persist.hasHydrated()
+  );
+  useEffect(() => useAuthStore.persist.onFinishHydration(() => setReady(true)), []);
+
   useEffect(() => {
+    if (!ready) return;
     if (!user) {
       router.replace("/auth");
     } else if (!allow.includes(user.role)) {
       router.replace(HOME[user.role] ?? "/home");
     }
-  }, [user, allow, router]);
+  }, [ready, user, allow, router]);
 
-  if (!user || !allow.includes(user.role)) {
+  if (!ready || !user || !allow.includes(user.role)) {
     return <div style={{ position: "fixed", inset: 0, background: "#fff" }} />;
   }
   return <>{children}</>;

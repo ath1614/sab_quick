@@ -74,10 +74,17 @@ export default function CheckoutPage() {
   const subtotal = total();
   const deliveryFee = deliveryFeeFor(subtotal);
 
-  // Guard: never let an empty cart reach checkout.
+  // Wait for the persisted cart to finish hydrating before judging it "empty",
+  // otherwise a reload/direct-open of /checkout wrongly bounces to /cart.
+  const [cartReady, setCartReady] = useState(
+    () => typeof window !== "undefined" && useCartStore.persist.hasHydrated()
+  );
+  useEffect(() => useCartStore.persist.onFinishHydration(() => setCartReady(true)), []);
+
+  // Guard: never let a genuinely-empty cart reach checkout (post-hydration only).
   useEffect(() => {
-    if (items.length === 0 && !placing) router.replace("/cart");
-  }, [items.length, placing, router]);
+    if (cartReady && items.length === 0 && !placing) router.replace("/cart");
+  }, [cartReady, items.length, placing, router]);
 
   // Fetch GPS location, reverse-geocode it, and fill the address + location store.
   const getLocation = () => {
