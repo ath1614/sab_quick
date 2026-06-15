@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User, CartItem, Product, Order, Category, StaffMember, Permission, Coupon } from "@/types";
-import { DEMO_PRODUCTS, DEMO_ORDERS, DEMO_CATEGORIES, DEMO_STAFF } from "@/lib/demo-data";
 import { supabase } from "@/lib/supabase";
 import { pickDriver, type DriverLoad } from "@/lib/routing";
 import { cartTotal, cartCount, addToCart, setQty } from "@/lib/cart";
@@ -143,12 +142,14 @@ interface BusinessStore {
 }
 
 export const useBusinessStore = create<BusinessStore>()(
-  persist(
+  // NOT persisted and NOT demo-seeded — order/product/staff data must always
+  // come fresh from Supabase (stale demo data caused fake dashboard orders and
+  // un-orderable demo products in the cart).
     (set, get) => ({
-      products: DEMO_PRODUCTS,
-      categories: DEMO_CATEGORIES,
-      orders: DEMO_ORDERS,
-      staff: DEMO_STAFF,
+      products: [],
+      categories: [],
+      orders: [],
+      staff: [],
       coupons: [],
       deliveryPartners: [],
 
@@ -447,7 +448,5 @@ export const useBusinessStore = create<BusinessStore>()(
           await get().updateCoupon(id, { isActive: !coupon.isActive });
         }
       },
-    }),
-    { name: "sab-business" }
-  )
+    })
 );
