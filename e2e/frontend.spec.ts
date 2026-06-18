@@ -81,3 +81,13 @@ test("staff: browser back from dashboard does not land on customer page or white
   const bodyText = (await page.locator("body").innerText()).trim();
   expect(bodyText.length).toBeGreaterThan(0); // not a white/blank screen
 });
+
+test("owner can log out and the session is actually cleared", async ({ page }) => {
+  await login(page, ACCT.owner);
+  await expect(page).toHaveURL(/\/owner/, { timeout: 20000 });
+  await page.getByRole("button", { name: /log out/i }).click();
+  await expect(page).toHaveURL(/\/auth/, { timeout: 15000 });
+  // session must be gone: visiting a protected route bounces back to /auth
+  await page.goto("/owner");
+  await expect(page).toHaveURL(/\/auth/, { timeout: 15000 });
+});

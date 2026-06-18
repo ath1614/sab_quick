@@ -11,7 +11,7 @@ interface AuthStore {
   user: User | null;
   session: Session | null;
   setUser: (user: User | null, session: Session | null) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -19,9 +19,20 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       session: null,
       setUser: (user, session) => set({ user, session }),
-      logout: () => {
+      logout: async () => {
+        // Must end the Supabase session (clears the auth cookies) — otherwise
+        // proxy.ts still sees a valid session and re-authenticates the user.
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // ignore network errors — still clear local state below
+        }
         set({ user: null, session: null });
-        localStorage.removeItem("sab-auth");
+        try {
+          localStorage.removeItem("sab-auth");
+        } catch {
+          // SSR / no-window safety
+        }
       },
     }),
     { name: "sab-auth" }

@@ -49,7 +49,7 @@ export default function DeliveryDashboard() {
             <span className={`w-2 h-2 rounded-full ${online ? "bg-white animate-pulse" : "bg-gray-500"}`} />
             {online ? "Online" : "Offline"}
           </button>
-          <button onClick={() => { logout(); router.push("/auth"); }}
+          <button aria-label="Log out" onClick={async () => { await logout(); router.replace("/auth"); }}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <LogOut size={16} />
           </button>

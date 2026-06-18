@@ -27,7 +27,7 @@ export default function AdminPanel() {
           <h1 className="text-2xl font-black text-brand-black">Admin Panel</h1>
           <p className="text-sm text-gray-400">{user?.name}</p>
         </div>
-        <button onClick={() => { logout(); router.push("/auth"); }}
+        <button aria-label="Log out" onClick={async () => { await logout(); router.replace("/auth"); }}
           className="w-9 h-9 rounded-full bg-brand-surface flex items-center justify-center">
           <LogOut size={16} className="text-gray-600" />
         </button>

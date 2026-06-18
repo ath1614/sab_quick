@@ -39,7 +39,7 @@ export default function StaffPanel() {
           <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Staff</p>
           <h1 className="text-xl font-black text-brand-black">{user?.name}</h1>
         </div>
-        <button onClick={() => { logout(); router.push("/auth"); }}
+        <button aria-label="Log out" onClick={async () => { await logout(); router.replace("/auth"); }}
           className="w-9 h-9 rounded-full bg-brand-surface flex items-center justify-center">
           <LogOut size={16} className="text-gray-500" />
         </button>

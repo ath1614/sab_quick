@@ -17,6 +17,10 @@ const eslintConfig = defineConfig([
     "playwright.config.ts",
     // Node test/maintenance scripts.
     "scripts/**",
+    // Native (Capacitor) project + mobile shell — not app source.
+    "android/**",
+    "ios/**",
+    "mobile-www/**",
   ]),
 ]);
 

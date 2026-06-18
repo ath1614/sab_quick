@@ -55,7 +55,7 @@ export default function ProfilePage() {
           ))}
 
           <motion.button whileTap={{ scale: 0.97 }}
-            onClick={() => { logout(); router.push("/auth"); }}
+            aria-label="Log out" onClick={async () => { await logout(); router.replace("/auth"); }}
             className="w-full bg-red-50 border border-red-100 rounded-2xl px-4 py-4 flex items-center gap-3 mt-2">
             <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center">
               <LogOut size={17} className="text-red-500" />
