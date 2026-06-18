@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor / Android build artifacts
+*.apk
+/android/app/build/
+/android/.gradle/
+/android/build/
+/android/capacitor-cordova-android-plugins/

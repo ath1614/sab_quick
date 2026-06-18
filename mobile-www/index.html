@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>SAB QUICK</title>
+  <style>
+    html,body{height:100%;margin:0;background:#0D0D0D;color:#fff;font-family:-apple-system,system-ui,sans-serif}
+    .c{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+    .s{width:36px;height:36px;border:3px solid rgba(44,160,28,.25);border-top-color:#2CA01C;border-radius:50%;animation:r 1s linear infinite}
+    @keyframes r{to{transform:rotate(360deg)}}
+    p{opacity:.6;font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="c">
+    <div class="s"></div>
+    <p>Loading SAB QUICK…</p>
+  </div>
+  <script>
+    // Fallback: if the native server.url isn't applied for any reason, go to prod.
+    setTimeout(function(){ if(location.protocol==='file:'||location.hostname==='localhost'){ location.href='https://sab-quick.vercel.app'; } }, 1500);
+  </script>
+</body>
+</html>

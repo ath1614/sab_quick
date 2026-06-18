@@ -1,14 +1,16 @@
 {
   "appId": "com.sabquick.app",
   "appName": "SAB QUICK",
-  "webDir": "out",
+  "webDir": "mobile-www",
   "server": {
-    "androidScheme": "https"
+    "url": "https://sab-quick.vercel.app",
+    "androidScheme": "https",
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 3000,
-      "backgroundColor": "#FFFFFF",
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0D0D0D",
       "showSpinner": false
     },
     "StatusBar": {
