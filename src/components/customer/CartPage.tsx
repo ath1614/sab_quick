@@ -8,15 +8,16 @@ import BottomNav from "@/components/layout/BottomNav";
 import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useState } from "react";
+import { deliveryFeeFor } from "@/lib/pricing";
 
 export default function CartPage() {
-  const { items, updateQty, removeItem, total, clearCart } = useCartStore();
-  const [coupon, setCoupon] = useState("");
-  const [couponApplied, setCouponApplied] = useState(false);
+  const { items, updateQty, removeItem, total, clearCart, coupon, setCoupon } = useCartStore();
+  const [couponInput, setCouponInput] = useState(coupon);
   const router = useRouter();
 
-  const discount = couponApplied ? Math.round(total() * 0.1) : 0;
-  const finalTotal = total() - discount;
+  const subtotal = total();
+  const deliveryFee = deliveryFeeFor(subtotal);
+  const estTotal = subtotal + deliveryFee;
 
   return (
     <AuthGuard>
@@ -76,44 +77,38 @@ export default function CartPage() {
               ))}
             </AnimatePresence>
 
-            {/* Coupon */}
+            {/* Coupon — code is carried to checkout and validated server-side */}
             <div className="bg-white rounded-3xl p-4 shadow-card">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Tag size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())}
+                  <input value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                     placeholder="Coupon code"
-                    className="w-full pl-9 pr-3 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none" />
+                    className="w-full pl-9 pr-3 py-3 rounded-xl bg-brand-surface text-sm focus:outline-none uppercase" />
                 </div>
-                <button onClick={() => { if (coupon === "SAVE10") setCouponApplied(true); }}
+                <button onClick={() => setCoupon(couponInput.trim())}
                   className="px-4 py-3 rounded-xl bg-brand-green text-white text-sm font-bold">
                   Apply
                 </button>
               </div>
-              {couponApplied
-                ? <p className="text-brand-green text-xs font-semibold mt-2">10% discount applied</p>
-                : <p className="text-gray-400 text-xs mt-1.5">Try: SAVE10</p>}
+              {coupon
+                ? <p className="text-brand-green text-xs font-semibold mt-2">Coupon “{coupon}” will be applied at checkout</p>
+                : <p className="text-gray-400 text-xs mt-1.5">Have a code? Apply it here.</p>}
             </div>
 
             {/* Summary */}
             <div className="bg-white rounded-3xl p-4 shadow-card space-y-2.5">
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Subtotal</span>
-                <span className="font-semibold text-brand-black">{formatCurrency(total())}</span>
+                <span className="font-semibold text-brand-black">{formatCurrency(subtotal)}</span>
               </div>
-              {discount > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-brand-green">Coupon Discount</span>
-                  <span className="font-semibold text-brand-green">-{formatCurrency(discount)}</span>
-                </div>
-              )}
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Delivery</span>
-                <span className="font-semibold text-brand-green">FREE</span>
+                <span className="font-semibold text-brand-green">{deliveryFee === 0 ? "FREE" : formatCurrency(deliveryFee)}</span>
               </div>
               <div className="border-t border-gray-100 pt-2.5 flex justify-between">
-                <span className="font-bold text-brand-black">Total</span>
-                <span className="font-black text-brand-black text-lg">{formatCurrency(finalTotal)}</span>
+                <span className="font-bold text-brand-black">Total{coupon ? " (before coupon)" : ""}</span>
+                <span className="font-black text-brand-black text-lg">{formatCurrency(estTotal)}</span>
               </div>
             </div>
           </div>

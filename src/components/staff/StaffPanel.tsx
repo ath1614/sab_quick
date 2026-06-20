@@ -7,7 +7,10 @@ import { ShoppingBag, Package, LogOut, AlertTriangle, Plus } from "lucide-react"
 import OrderCard from "@/components/shared/OrderCard";
 import ProductForm from "@/components/shared/ProductForm";
 import { formatCurrency } from "@/lib/utils";
+import { resolvePermissions } from "@/lib/permissions";
 import type { Permission } from "@/types";
+
+const STAFF_VISIBLE_STATUSES = ["new", "accepted", "preparing", "packed", "out_for_delivery"];
 
 type Tab = "orders" | "stock" | "products";
 
@@ -21,8 +24,11 @@ export default function StaffPanel() {
   const [stockValue, setStockValue] = useState(0);
 
   const staffRecord = staff.find((s) => s.email === user?.email);
-  const permissions: Permission[] =
-    staffRecord?.permissions ?? user?.permissions ?? ["view_orders", "reject_items", "manage_stock"];
+  const permissions: Permission[] = resolvePermissions(
+    user?.role ?? "staff",
+    staffRecord?.permissions,
+    user?.permissions
+  );
 
   const lowStock = products.filter((p) => p.stock < 15);
 
@@ -60,10 +66,10 @@ export default function StaffPanel() {
 
         {tab === "orders" && (
           <>
-            {orders.filter((o) => ["new","accepted","preparing"].includes(o.status)).length === 0
+            {orders.filter((o) => STAFF_VISIBLE_STATUSES.includes(o.status)).length === 0
               ? <div className="text-center py-16 text-gray-400 font-medium">No active orders</div>
               : orders
-                  .filter((o) => ["new","accepted","preparing"].includes(o.status))
+                  .filter((o) => STAFF_VISIBLE_STATUSES.includes(o.status))
                   .map((order) => (
                     <OrderCard key={order.id} order={order} permissions={permissions} />
                   ))}

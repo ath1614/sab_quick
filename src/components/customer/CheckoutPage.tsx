@@ -37,7 +37,7 @@ export default function CheckoutPage() {
     pincode: "",
   });
   const [payMethod, setPayMethod] = useState(ONLINE_ENABLED ? "upi" : "cod");
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(() => useCartStore.getState().coupon || "");
   const [placing, setPlacing] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [error, setError] = useState("");

@@ -9,6 +9,7 @@ import ProductForm from "@/components/shared/ProductForm";
 import { AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { resolvePermissions } from "@/lib/permissions";
 import type { Permission } from "@/types";
 
 type Tab = "dashboard" | "orders" | "stock" | "products";
@@ -22,10 +23,13 @@ export default function ManagerPanel() {
   const [stockEditing, setStockEditing] = useState<string | null>(null);
   const [stockValue, setStockValue] = useState(0);
 
-  // Get this manager's permissions from staff list (fallback to auth user)
+  // Get this manager's permissions (explicit > auth user > role defaults)
   const staffRecord = staff.find((s) => s.email === user?.email);
-  const permissions: Permission[] =
-    staffRecord?.permissions ?? user?.permissions ?? ["view_orders", "view_analytics"];
+  const permissions: Permission[] = resolvePermissions(
+    user?.role ?? "manager",
+    staffRecord?.permissions,
+    user?.permissions
+  );
 
   const newOrders = orders.filter((o) => o.status === "new").length;
   const todayRevenue = orders.filter((o) => o.status !== "rejected").reduce((s, o) => s + o.total, 0);

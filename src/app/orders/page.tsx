@@ -55,7 +55,7 @@ export default function OrdersPage() {
             {myOrders.map((order, i) => (
               <motion.div key={order.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }} whileTap={{ scale: 0.98 }}
-                onClick={() => router.push("/orders/track")}
+                onClick={() => router.push(`/orders/track?id=${order.id}`)}
                 className="bg-white rounded-3xl p-4 shadow-card flex items-center gap-3 cursor-pointer">
                 <div className="w-12 h-12 rounded-2xl bg-brand-surface flex items-center justify-center flex-shrink-0">
                   <Package size={20} className="text-brand-green" />

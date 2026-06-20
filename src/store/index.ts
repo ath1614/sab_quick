@@ -42,9 +42,11 @@ export const useAuthStore = create<AuthStore>()(
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 interface CartStore {
   items: CartItem[];
+  coupon: string; // code carried to checkout; validated server-side in place_order
   addItem: (product: Product) => void;
   removeItem: (productId: string) => void;
   updateQty: (productId: string, qty: number) => void;
+  setCoupon: (code: string) => void;
   clearCart: () => void;
   total: () => number;
   count: () => number;
@@ -53,10 +55,12 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      coupon: "",
       addItem: (product) => set({ items: addToCart(get().items, product) }),
       removeItem: (id) => set({ items: get().items.filter((i) => i.product.id !== id) }),
       updateQty: (id, qty) => set({ items: setQty(get().items, id, qty) }),
-      clearCart: () => set({ items: [] }),
+      setCoupon: (code) => set({ coupon: code }),
+      clearCart: () => set({ items: [], coupon: "" }),
       total: () => cartTotal(get().items),
       count: () => cartCount(get().items),
     }),
@@ -213,14 +217,14 @@ export const useBusinessStore = create<BusinessStore>()(
         if (updates.image !== undefined) dbUpdates.image_url = updates.image;
         if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
-        const { error } = await supabase.from("products").update(dbUpdates).eq("id", id);
-        if (!error) {
+        const { data, error } = await supabase.from("products").update(dbUpdates).eq("id", id).select("id");
+        if (!error && data?.length) {
           set({ products: get().products.map((p) => p.id === id ? { ...p, ...updates } : p) });
         }
       },
       updateStock: async (id, stock) => {
-        const { error } = await supabase.from("products").update({ stock }).eq("id", id);
-        if (!error) {
+        const { data, error } = await supabase.from("products").update({ stock }).eq("id", id).select("id");
+        if (!error && data?.length) {
           set({ products: get().products.map((p) => p.id === id ? { ...p, stock } : p) });
         }
       },
@@ -253,12 +257,13 @@ export const useBusinessStore = create<BusinessStore>()(
       },
 
       acceptOrder: async (orderId) => {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("orders")
           .update({ status: "accepted" })
-          .eq("id", orderId);
-        
-        if (!error) {
+          .eq("id", orderId)
+          .select("id");
+
+        if (!error && data?.length) {
           set({
             orders: get().orders.map((o) =>
               o.id === orderId
@@ -269,12 +274,13 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
       rejectOrder: async (orderId, reason) => {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("orders")
           .update({ status: "rejected", notes: reason })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .select("id");
 
-        if (!error) {
+        if (!error && data?.length) {
           set({
             orders: get().orders.map((o) =>
               o.id === orderId ? { ...o, status: "rejected", rejectionReason: reason } : o
@@ -285,12 +291,13 @@ export const useBusinessStore = create<BusinessStore>()(
       rejectOrderItem: async (orderId, productId, reason) => {
         // order_items has no reason column (schema), so persist the status and
         // keep the reason in local state for the UI.
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("order_items")
           .update({ status: "rejected" })
           .eq("order_id", orderId)
-          .eq("product_id", productId);
-        if (!error) {
+          .eq("product_id", productId)
+          .select("id");
+        if (!error && data?.length) {
           set({
             orders: get().orders.map((o) =>
               o.id === orderId
@@ -308,24 +315,34 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
       updateOrderStatus: async (orderId, status) => {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("orders")
           .update({ status })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .select("id");
 
-        if (!error) {
+        if (!error && data?.length) {
           set({
             orders: get().orders.map((o) => o.id === orderId ? { ...o, status } : o),
           });
+          // When an order is packed, auto-assign a delivery partner if none yet,
+          // so it surfaces to a driver without manual dispatch.
+          if (status === "packed") {
+            const order = get().orders.find((o) => o.id === orderId);
+            if (order && !order.deliveryPartnerId) {
+              await get().autoAssignDeliveryPartner(orderId);
+            }
+          }
         }
       },
       assignDeliveryPartner: async (orderId, partnerId) => {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("orders")
           .update({ delivery_partner_id: partnerId })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .select("id");
 
-        if (!error) {
+        if (!error && data?.length) {
           set({
             orders: get().orders.map((o) => o.id === orderId ? { ...o, deliveryPartnerId: partnerId } : o),
           });
