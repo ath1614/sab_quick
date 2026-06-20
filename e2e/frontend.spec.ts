@@ -91,3 +91,26 @@ test("owner can log out and the session is actually cleared", async ({ page }) =
   await page.goto("/owner");
   await expect(page).toHaveURL(/\/auth/, { timeout: 15000 });
 });
+
+test("customer orders page renders with a placed order (no crash)", async ({ page }) => {
+  // place a COD order, then open /orders — previously this crashed (raw rows).
+  await login(page, ACCT.customer);
+  await expect(page).toHaveURL(/\/home/, { timeout: 20000 });
+  await page.locator("img[alt]").nth(1).click();
+  await page.getByRole("button", { name: /add to cart/i }).first().click();
+  await page.waitForTimeout(600);
+  await page.goto("/checkout");
+  await page.waitForTimeout(1500);
+  await page.getByPlaceholder(/Green Avenue/i).fill("12 Test St");
+  await page.getByPlaceholder("400001").fill("400053");
+  await page.getByRole("button", { name: /continue to payment/i }).click({ force: true });
+  await page.waitForTimeout(1000);
+  await page.getByRole("button").filter({ hasText: /cash on delivery/i }).click({ force: true });
+  await page.getByRole("button", { name: /place order/i }).click({ force: true });
+  await expect(page).toHaveURL(/\/orders\/track/, { timeout: 25000 });
+  // now the orders list must render (not crash) and show the order
+  await page.goto("/orders");
+  await expect(page).toHaveURL(/\/orders$/, { timeout: 15000 });
+  await expect(page.getByText(/My Orders/i).first()).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/items ·/i).first()).toBeVisible({ timeout: 15000 });
+});
