@@ -80,7 +80,7 @@ export default function OrderCard({ order, permissions }: Props) {
         <div className="flex items-start justify-between mb-2">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-black text-brand-black text-sm">#{order.id}</span>
+              <span className="font-black text-brand-black text-sm">#{order.id.slice(0, 8).toUpperCase()}</span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${STATUS_STYLES[order.status]}`}>
                 {STATUS_LABEL[order.status]}
               </span>

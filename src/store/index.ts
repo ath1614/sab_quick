@@ -309,7 +309,7 @@ export const useBusinessStore = create<BusinessStore>()(
         // keep the reason in local state for the UI.
         const { data, error } = await supabase
           .from("order_items")
-          .update({ status: "rejected" })
+          .update({ status: "rejected", rejection_reason: reason })
           .eq("order_id", orderId)
           .eq("product_id", productId)
           .select("id");

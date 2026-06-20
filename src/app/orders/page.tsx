@@ -62,7 +62,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="font-bold text-brand-black text-sm">#{order.id}</p>
+                    <p className="font-bold text-brand-black text-sm">#{order.id.slice(0, 8).toUpperCase()}</p>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-lg flex-shrink-0 ${STATUS_STYLES[order.status]}`}>
                       {STATUS_LABEL[order.status]}
                     </span>

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Search, Bell, MapPin, ChevronRight, Zap, ShoppingCart } from "lucide-react";
 import { useAuthStore, useCartStore, useBusinessStore, useLocationStore } from "@/store";
@@ -28,7 +29,10 @@ export default function HomePage() {
   const { scrollY } = useScroll();
   const headerOpacity = useTransform(scrollY, [0, 120], [1, 0.96]);
 
+  const router = useRouter();
   const firstName = user?.name?.split(" ")[0] ?? "there";
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? "Good morning" : hr < 17 ? "Good afternoon" : "Good evening";
 
   // Delivery location shown in the header — detect once via GPS if unknown.
   const { city, pincode, setLocation } = useLocationStore();
@@ -119,6 +123,8 @@ export default function HomePage() {
           <div className="flex items-center gap-2.5">
             <motion.button
               whileTap={{ scale: 0.9 }}
+              onClick={() => router.push("/orders")}
+              aria-label="My orders"
               className="relative w-9 h-9 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center"
             >
               <Bell size={16} className="text-white/80" />
@@ -137,7 +143,7 @@ export default function HomePage() {
             transition={{ duration: 0.5 }}
             className="text-white/50 text-xs font-medium"
           >
-            Good morning
+            {greeting}
           </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
@@ -251,6 +257,7 @@ export default function HomePage() {
               <p className="text-white/50 text-xs mt-1.5 mb-3">Free delivery on your first order</p>
               <motion.button
                 whileTap={{ scale: 0.96 }}
+                onClick={() => router.push("/explore")}
                 className="bg-brand-green text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-green"
               >
                 Order Now
@@ -338,7 +345,7 @@ export default function HomePage() {
                   )}
                   <h3 className="font-black text-brand-black text-base">{section.title}</h3>
                 </div>
-                <button className="text-brand-green text-xs font-bold flex items-center gap-1 uppercase tracking-wide">
+                <button onClick={() => router.push("/explore")} className="text-brand-green text-xs font-bold flex items-center gap-1 uppercase tracking-wide">
                   See all <ChevronRight size={12} />
                 </button>
               </div>

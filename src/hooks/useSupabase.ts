@@ -69,6 +69,7 @@ function mapOrderRow(o: any): Order {
       quantity: it.quantity,
       unitPrice: it.unit_price,
       status: it.status ?? "confirmed",
+      rejectionReason: it.rejection_reason ?? undefined,
     })),
     address: {
       id: o.id,

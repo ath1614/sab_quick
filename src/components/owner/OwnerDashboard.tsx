@@ -48,7 +48,7 @@ export default function OwnerDashboard() {
   const [stockValue, setStockValue] = useState(0);
 
   const newOrders = orders.filter((o) => o.status === "new").length;
-  const todayRevenue = orders.filter((o) => o.status !== "rejected").reduce((s, o) => s + o.total, 0);
+  const todayRevenue = orders.filter((o) => o.status !== "rejected" && o.status !== "cancelled").reduce((s, o) => s + o.total, 0);
   const lowStock = products.filter((p) => p.stock < 15);
 
   const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
@@ -96,7 +96,7 @@ export default function OwnerDashboard() {
           <>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Today Revenue", value: formatCurrency(todayRevenue), icon: DollarSign, sub: `${orders.length} orders` },
+                { label: "Total Revenue", value: formatCurrency(todayRevenue), icon: DollarSign, sub: `${orders.length} orders` },
                 { label: "New Orders", value: newOrders, icon: ShoppingBag, sub: "Pending action" },
                 { label: "Products", value: products.filter(p => p.isActive).length, icon: Package, sub: `${lowStock.length} low stock` },
                 { label: "Staff", value: staff.filter(s => s.isActive).length, icon: Users, sub: "Active members" },
@@ -133,7 +133,7 @@ export default function OwnerDashboard() {
                 <h3 className="font-bold text-brand-black text-sm">Store Health</h3>
               </div>
               {[
-                { label: "Inventory Health", score: Math.round((products.filter(p => p.stock > 15).length / products.length) * 100) },
+                { label: "Inventory Health", score: Math.round((products.filter(p => p.stock > 15).length / Math.max(products.length, 1)) * 100) },
                 { label: "Order Acceptance", score: Math.round((orders.filter(o => o.status !== "rejected").length / Math.max(orders.length, 1)) * 100) },
                 { label: "Active Products", score: Math.round((products.filter(p => p.isActive).length / Math.max(products.length, 1)) * 100) },
               ].map(({ label, score }) => (

@@ -32,14 +32,26 @@ export default function ManagerPanel() {
   );
 
   const newOrders = orders.filter((o) => o.status === "new").length;
-  const todayRevenue = orders.filter((o) => o.status !== "rejected").reduce((s, o) => s + o.total, 0);
+  const isVoid = (s: string) => s === "rejected" || s === "cancelled";
+  const todayRevenue = orders.filter((o) => !isVoid(o.status)).reduce((s, o) => s + o.total, 0);
   const lowStock = products.filter((p) => p.stock < 15);
 
-  // Stable heatmap — useMemo so it doesn't regenerate on every render
-  const HEATMAP = Array.from({ length: 24 }, (_, i) => ({
-    hour: i,
-    orders: Math.floor(Math.sin(i / 3) * 8 + (i >= 8 && i <= 22 ? 12 : 2)),
+  // Real hourly order distribution (by created_at hour).
+  const HEATMAP = Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    orders: orders.filter((o) => new Date(o.createdAt).getHours() === h).length,
   }));
+  const peakHour = Math.max(1, ...HEATMAP.map((h) => h.orders));
+
+  // Real fulfilment metrics.
+  const delivered = orders.filter((o) => o.status === "delivered").length;
+  const voided = orders.filter((o) => isVoid(o.status)).length;
+  const pct = (n: number) => (orders.length ? Math.round((n / orders.length) * 100) : 0);
+  const DELIVERY_METRICS = [
+    { label: "Delivered Orders", value: String(delivered), ok: true },
+    { label: "Fulfilment Rate", value: `${pct(delivered)}%`, ok: pct(delivered) >= 50 },
+    { label: "Cancel / Reject Rate", value: `${pct(voided)}%`, ok: pct(voided) <= 15 },
+  ];
 
   const TABS: { key: Tab; label: string; icon: React.ElementType; perm?: Permission }[] = [
     { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, perm: "view_analytics" as Permission },
@@ -81,7 +93,7 @@ export default function ManagerPanel() {
           <>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Revenue Today", value: formatCurrency(todayRevenue), icon: DollarSign },
+                { label: "Revenue", value: formatCurrency(todayRevenue), icon: DollarSign },
                 { label: "Total Orders", value: orders.length, icon: ShoppingBag },
                 { label: "New Orders", value: newOrders, icon: TrendingUp },
                 { label: "Low Stock", value: lowStock.length, icon: AlertTriangle },
@@ -103,7 +115,7 @@ export default function ManagerPanel() {
               <div className="flex items-end gap-0.5 h-16">
                 {HEATMAP.map(({ hour, orders: cnt }) => (
                   <motion.div key={hour} className="flex-1 bg-brand-green rounded-sm opacity-80"
-                    initial={{ height: 0 }} animate={{ height: `${(cnt / 23) * 100}%` }}
+                    initial={{ height: 0 }} animate={{ height: `${(cnt / peakHour) * 100}%` }}
                     transition={{ delay: hour * 0.015, duration: 0.3 }} />
                 ))}
               </div>
@@ -113,12 +125,8 @@ export default function ManagerPanel() {
             </div>
 
             <div className="bg-white rounded-3xl p-4 shadow-card">
-              <h3 className="font-bold text-brand-black text-sm mb-3">Delivery Metrics</h3>
-              {[
-                { label: "Avg Delivery Time", value: "9.2 mins", ok: true },
-                { label: "On-time Rate", value: "94%", ok: true },
-                { label: "Cancellation Rate", value: "3.2%", ok: true },
-              ].map(({ label, value, ok }) => (
+              <h3 className="font-bold text-brand-black text-sm mb-3">Fulfilment Metrics</h3>
+              {DELIVERY_METRICS.map(({ label, value, ok }) => (
                 <div key={label} className="flex justify-between py-2 border-b border-gray-50 last:border-0">
                   <span className="text-sm text-gray-500">{label}</span>
                   <span className={`font-bold text-sm ${ok ? "text-brand-green" : "text-red-500"}`}>{value}</span>

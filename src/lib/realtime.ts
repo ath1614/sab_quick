@@ -82,6 +82,7 @@ export function useRealtimeSubscriptions() {
                 quantity: item.quantity,
                 unitPrice: item.unit_price,
                 status: item.status || "confirmed",
+            rejectionReason: item.rejection_reason ?? undefined,
               }));
 
               return {
