@@ -243,6 +243,7 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
       updateStock: async (id, stock) => {
+        stock = Math.max(0, Math.floor(stock || 0)); // no negative / fractional stock
         const { data, error } = await supabase.from("products").update({ stock }).eq("id", id).select("id");
         if (!error && data?.length) {
           set({ products: get().products.map((p) => p.id === id ? { ...p, stock } : p) });

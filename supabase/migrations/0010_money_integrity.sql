@@ -166,7 +166,10 @@ begin
     where order_id = p_order_id and product_id = p_product_id;
   update public.products set stock = stock + v_item.quantity where id = p_product_id;
 
-  -- recompute order totals from remaining (non-rejected) items
+  -- recompute order totals from remaining (non-rejected) items.
+  -- Flag this as a trusted re-price so the order-guard trigger allows the
+  -- financial change (a direct client update would still be blocked).
+  perform set_config('sabquick.trusted', '1', true);
   select coalesce(sum(total_price),0) into v_subtotal
     from public.order_items where order_id = p_order_id and status <> 'rejected';
   select discount, delivery_fee into v_discount, v_delivery from public.orders where id = p_order_id;
@@ -174,5 +177,6 @@ begin
      set subtotal = v_subtotal,
          total = greatest(0, v_subtotal - least(coalesce(v_discount,0), v_subtotal)) + coalesce(v_delivery,0)
    where id = p_order_id;
+  perform set_config('sabquick.trusted', '0', true);
 end; $$;
 grant execute on function public.reject_order_item(uuid, uuid, text) to authenticated;

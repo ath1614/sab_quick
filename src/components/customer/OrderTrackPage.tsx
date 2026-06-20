@@ -68,20 +68,39 @@ export default function OrderTrackPage() {
   const shortId = id ? `#${id.slice(0, 8).toUpperCase()}` : "—";
 
   const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
   const cancelOrder = async () => {
-    if (!id) return;
+    if (!id || cancelling) return;
     setCancelling(true);
+    setCancelError("");
     const { error } = await supabase.rpc("cancel_order", { p_order_id: id });
     setCancelling(false);
-    if (error) alert(error.message);
+    if (error) setCancelError("Couldn't cancel — this order may already be in progress.");
   };
+
+  // Give the store a moment to hydrate the order before declaring "not found".
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+  const notFound = !id || (settled && !order);
 
   return (
     <AuthGuard>
       <div className="min-h-screen bg-brand-surface pb-8">
         <AppHeader title="Live Tracking" subtitle={`Order ${shortId}`} back backHref="/orders" />
 
-        {isRejected ? (
+        {notFound ? (
+          <div className="mx-4 mt-4 bg-white rounded-3xl p-8 shadow-card text-center">
+            <p className="font-bold text-brand-black">Order not found</p>
+            <p className="text-sm text-gray-500 mt-1">We couldn’t find this order. Check your orders list.</p>
+          </div>
+        ) : !order ? (
+          <div className="mx-4 mt-4 bg-white rounded-3xl p-8 shadow-card text-center">
+            <p className="text-sm text-gray-500">Loading your order…</p>
+          </div>
+        ) : isRejected ? (
           <div className="mx-4 mt-4 bg-white rounded-3xl p-6 shadow-card text-center">
             <p className="font-bold text-red-500">
               {order?.status === "cancelled" ? "This order was cancelled." : "This order was rejected."}
@@ -166,6 +185,7 @@ export default function OrderTrackPage() {
                   className="w-full py-3 rounded-2xl bg-red-50 border border-red-200 text-red-500 font-bold text-sm disabled:opacity-60">
                   {cancelling ? "Cancelling..." : "Cancel Order"}
                 </button>
+                {cancelError && <p className="text-red-500 text-xs text-center mt-2">{cancelError}</p>}
               </div>
             )}
           </>

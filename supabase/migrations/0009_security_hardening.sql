@@ -51,6 +51,8 @@ begin
     new.delivered_at = now();
   end if;
 
+  -- trusted SECURITY DEFINER RPCs (e.g. reject_order_item re-pricing) set this
+  if current_setting('sabquick.trusted', true) = '1' then return new; end if;
   if auth.uid() is null then return new; end if;           -- service role / webhook
   if public.auth_role() in ('owner','admin') then return new; end if;
 

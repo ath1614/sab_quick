@@ -25,7 +25,7 @@ function mapProduct(p: SupabaseProduct): Product {
     price: p.price,
     mrp: p.mrp || p.price,
     image: p.image_url || "",
-    category: p.category || "",
+    category: p.category_id || "",
     unit: p.unit || "",
     stock: p.stock,
     eta: p.eta_minutes || 10,
