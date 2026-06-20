@@ -45,7 +45,11 @@ export const useAuthStore = create<AuthStore>()(
         }
         set({ user: null, session: null });
         try {
+          // Clear the cart so the next user on this device doesn't inherit it.
+          useCartStore.setState({ items: [], coupon: "" });
           localStorage.removeItem("sab-auth");
+          localStorage.removeItem("sab-cart");
+          localStorage.removeItem("sab-location");
         } catch {
           // SSR / no-window safety
         }
@@ -290,13 +294,9 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
       rejectOrder: async (orderId, reason) => {
-        const { data, error } = await supabase
-          .from("orders")
-          .update({ status: "rejected", notes: reason })
-          .eq("id", orderId)
-          .select("id");
-
-        if (!error && data?.length) {
+        // RPC restocks + refunds the coupon atomically (raw update can't).
+        const { error } = await supabase.rpc("reject_order", { p_order_id: orderId, p_reason: reason });
+        if (!error) {
           set({
             orders: get().orders.map((o) =>
               o.id === orderId ? { ...o, status: "rejected", rejectionReason: reason } : o
@@ -305,15 +305,13 @@ export const useBusinessStore = create<BusinessStore>()(
         }
       },
       rejectOrderItem: async (orderId, productId, reason) => {
-        // order_items has no reason column (schema), so persist the status and
-        // keep the reason in local state for the UI.
-        const { data, error } = await supabase
-          .from("order_items")
-          .update({ status: "rejected", rejection_reason: reason })
-          .eq("order_id", orderId)
-          .eq("product_id", productId)
-          .select("id");
-        if (!error && data?.length) {
+        // RPC restocks the item + recomputes the order total atomically.
+        const { error } = await supabase.rpc("reject_order_item", {
+          p_order_id: orderId,
+          p_product_id: productId,
+          p_reason: reason,
+        });
+        if (!error) {
           set({
             orders: get().orders.map((o) =>
               o.id === orderId

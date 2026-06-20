@@ -54,10 +54,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // The handle_new_user trigger inserts the profile; fill in the extra fields.
+  // The trigger inserts the profile as 'customer'; the service role sets the
+  // real role + fields here (service role bypasses the role-change guard).
   await admin
     .from("users")
-    .update({ phone: b.phone ?? null, permissions: b.permissions ?? [], is_active: true })
+    .update({ role: b.role, phone: b.phone ?? null, permissions: b.permissions ?? [], is_active: true })
     .eq("id", created.user.id);
 
   return NextResponse.json({ id: created.user.id, tempPassword });

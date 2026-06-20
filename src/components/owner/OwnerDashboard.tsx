@@ -42,6 +42,7 @@ export default function OwnerDashboard() {
   const [categoryName, setCategoryName] = useState("");
   const [showStaffForm, setShowStaffForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [newStaffPassword, setNewStaffPassword] = useState<{ email: string; password: string } | null>(null);
   const [showCouponForm, setShowCouponForm] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [stockEditing, setStockEditing] = useState<string | null>(null);
@@ -62,6 +63,26 @@ export default function OwnerDashboard() {
 
   return (
     <div className="min-h-screen bg-brand-surface safe-top">
+      {/* New-staff credentials — shown once; the only copy of the temp password */}
+      {newStaffPassword && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/50">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-card">
+            <h3 className="font-black text-brand-black text-lg">Staff account created</h3>
+            <p className="text-sm text-gray-500 mt-1">Share these credentials — the password is shown only once.</p>
+            <div className="mt-4 bg-brand-surface rounded-2xl p-4 space-y-2">
+              <div><p className="text-xs text-gray-400">Email</p><p className="font-bold text-brand-black text-sm break-all">{newStaffPassword.email}</p></div>
+              <div><p className="text-xs text-gray-400">Temporary password</p><p className="font-mono font-bold text-brand-black">{newStaffPassword.password}</p></div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => navigator.clipboard?.writeText(`${newStaffPassword.email} / ${newStaffPassword.password}`)}
+                className="flex-1 py-3 rounded-2xl bg-brand-surface border border-gray-200 font-bold text-sm">Copy</button>
+              <button onClick={() => setNewStaffPassword(null)}
+                className="flex-1 py-3 rounded-2xl bg-brand-green text-white font-bold text-sm">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white px-5 pt-12 pb-3 flex items-center justify-between border-b border-gray-100">
         <div>
@@ -331,11 +352,12 @@ export default function OwnerDashboard() {
               {showStaffForm && (
                 <StaffForm
                   initial={editingStaff}
-                  onSave={(data) => {
+                  onSave={async (data) => {
                     if (editingStaff) {
-                      updateStaffPermissions(editingStaff.id, data.permissions);
+                      await updateStaffPermissions(editingStaff.id, data.permissions);
                     } else {
-                      addStaffMember(data);
+                      const pw = await addStaffMember(data);
+                      if (pw) setNewStaffPassword({ email: data.email, password: pw });
                     }
                     setShowStaffForm(false);
                     setEditingStaff(null);

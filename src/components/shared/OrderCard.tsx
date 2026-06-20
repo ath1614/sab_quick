@@ -150,7 +150,7 @@ export default function OrderCard({ order, permissions }: Props) {
                         <X size={10} className="text-red-500" />
                       </span>
                     )}
-                    {item.status === "pending" && canRejectItem && !isTerminal && (
+                    {item.status === "confirmed" && canRejectItem && ["new", "accepted", "preparing"].includes(order.status) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setRejectItemId(item.product.id); setReason(""); }}
                         className="text-xs text-red-500 font-semibold border border-red-200 px-2 py-0.5 rounded-lg"
@@ -224,8 +224,8 @@ export default function OrderCard({ order, permissions }: Props) {
                     </motion.button>
                   )}
 
-                  {/* Reject */}
-                  {canRejectOrder && (
+                  {/* Reject — only before the order is packed/dispatched */}
+                  {canRejectOrder && ["new", "accepted", "preparing"].includes(order.status) && (
                     <motion.button whileTap={{ scale: 0.97 }}
                       onClick={() => { setRejectOrderOpen(true); setReason(""); }}
                       className="w-11 h-11 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0">

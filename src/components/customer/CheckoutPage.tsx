@@ -129,6 +129,7 @@ export default function CheckoutPage() {
   }, []);
 
   const placeOrder = async () => {
+    if (placing) return; // guard against double-submit -> duplicate orders
     if (!address.line1.trim()) {
       setError("Please enter your delivery address.");
       setStep(0);
