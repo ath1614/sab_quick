@@ -12,6 +12,7 @@ import { createOrder } from "@/lib/orders";
 import { payWithRazorpay, isOnlinePaymentEnabled } from "@/lib/payments-client";
 import { deliveryFeeFor } from "@/lib/pricing";
 import { geocodeSearch, mapsEnabled, type GeoSuggestion } from "@/lib/maps";
+import { useAddresses } from "@/hooks/useAddresses";
 
 const STEPS = ["Address", "Payment"];
 
@@ -54,6 +55,7 @@ export default function CheckoutPage() {
   };
 
   const setLocation = useLocationStore((s) => s.setLocation);
+  const { addresses } = useAddresses();
 
   const pickSuggestion = (s: GeoSuggestion) => {
     setAddress((a) => ({
@@ -214,6 +216,26 @@ export default function CheckoutPage() {
           {/* Step 0 — Address (Zepto/Blinkit Style) */}
           {step === 0 && (
             <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} className="space-y-3">
+              {/* Saved addresses — tap to use */}
+              {addresses.length > 0 && (
+                <div className="bg-white rounded-3xl p-4 shadow-card">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Saved Addresses</p>
+                  <div className="space-y-2">
+                    {addresses.map((a) => (
+                      <button key={a.id}
+                        onClick={() => setAddress((prev) => ({ ...prev, line1: a.line1, city: a.city, pincode: a.pincode }))}
+                        className={`w-full text-left p-3 rounded-2xl border-2 transition-all ${
+                          address.line1 === a.line1 && address.pincode === a.pincode
+                            ? "border-brand-green bg-brand-green/5" : "border-gray-100 bg-brand-surface"
+                        }`}>
+                        <span className="font-bold text-brand-black text-sm">{a.label}</span>
+                        <span className="block text-xs text-gray-500 truncate">{a.line1}, {a.city} {a.pincode}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Address autocomplete (only when Mapbox is configured) */}
               {mapsEnabled() && (
                 <div className="relative">

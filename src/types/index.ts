@@ -58,7 +58,7 @@ export interface Order {
   customerName: string;
   customerPhone: string;
   items: OrderItem[];
-  status: "new" | "accepted" | "preparing" | "packed" | "out_for_delivery" | "delivered" | "rejected";
+  status: "new" | "accepted" | "preparing" | "packed" | "out_for_delivery" | "delivered" | "rejected" | "cancelled";
   total: number;
   address: Address;
   createdAt: string;

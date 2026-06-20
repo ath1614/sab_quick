@@ -11,14 +11,30 @@ interface AuthStore {
   user: User | null;
   session: Session | null;
   setUser: (user: User | null, session: Session | null) => void;
+  updateProfile: (updates: { name?: string; phone?: string }) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       session: null,
       setUser: (user, session) => set({ user, session }),
+      updateProfile: async (updates) => {
+        const u = get().user;
+        if (!u) return false;
+        const { data, error } = await supabase
+          .from("users")
+          .update({
+            ...(updates.name !== undefined && { name: updates.name }),
+            ...(updates.phone !== undefined && { phone: updates.phone }),
+          })
+          .eq("id", u.id)
+          .select("id");
+        if (error || !data?.length) return false;
+        set({ user: { ...u, ...updates } });
+        return true;
+      },
       logout: async () => {
         // Must end the Supabase session (clears the auth cookies) — otherwise
         // proxy.ts still sees a valid session and re-authenticates the user.

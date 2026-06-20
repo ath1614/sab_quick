@@ -2,10 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle, Package, Truck, Phone } from "lucide-react";
+import { CheckCircle, Package, Truck } from "lucide-react";
 import AppHeader from "@/components/layout/AppHeader";
 import AuthGuard from "@/components/layout/AuthGuard";
 import { useBusinessStore } from "@/store";
+import { supabase } from "@/lib/supabase";
 import { useOrderLocation } from "@/hooks/useDeliveryLocation";
 import { getRoute, type RouteResult } from "@/lib/maps";
 import LiveMap from "@/components/shared/LiveMap";
@@ -28,6 +29,7 @@ const STEP_BY_STATUS: Record<Order["status"], number> = {
   out_for_delivery: 2,
   delivered: 4,
   rejected: 0,
+  cancelled: 0,
 };
 
 export default function OrderTrackPage() {
@@ -60,9 +62,19 @@ export default function OrderTrackPage() {
   const liveRoute = driverLocation && destination ? route : null;
 
   const currentStep = order ? STEP_BY_STATUS[order.status] ?? 0 : 0;
-  const isRejected = order?.status === "rejected";
+  const isRejected = order?.status === "rejected" || order?.status === "cancelled";
+  const canCancel = order?.status === "new" || order?.status === "accepted";
   const eta = liveRoute?.durationMin ?? order?.eta ?? Math.max(0, 10 - currentStep * 2.5);
   const shortId = id ? `#${id.slice(0, 8).toUpperCase()}` : "—";
+
+  const [cancelling, setCancelling] = useState(false);
+  const cancelOrder = async () => {
+    if (!id) return;
+    setCancelling(true);
+    const { error } = await supabase.rpc("cancel_order", { p_order_id: id });
+    setCancelling(false);
+    if (error) alert(error.message);
+  };
 
   return (
     <AuthGuard>
@@ -71,7 +83,9 @@ export default function OrderTrackPage() {
 
         {isRejected ? (
           <div className="mx-4 mt-4 bg-white rounded-3xl p-6 shadow-card text-center">
-            <p className="font-bold text-red-500">This order was rejected.</p>
+            <p className="font-bold text-red-500">
+              {order?.status === "cancelled" ? "This order was cancelled." : "This order was rejected."}
+            </p>
             {order?.rejectionReason && (
               <p className="text-sm text-gray-500 mt-1">{order.rejectionReason}</p>
             )}
@@ -136,16 +150,24 @@ export default function OrderTrackPage() {
                   {order?.deliveryPartnerId ? "Delivery partner assigned" : "Awaiting rider assignment"}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {order?.deliveryPartnerId ? "On the way to the store" : "We'll assign a rider shortly"}
+                  {order?.status === "out_for_delivery"
+                    ? "On the way to you"
+                    : order?.deliveryPartnerId
+                    ? "Will pick up your order soon"
+                    : "We'll assign a rider shortly"}
                 </p>
               </div>
-              {order?.deliveryPartnerId && (
-                <motion.button whileTap={{ scale: 0.9 }}
-                  className="w-10 h-10 rounded-full bg-brand-green flex items-center justify-center shadow-green">
-                  <Phone size={16} className="text-white" />
-                </motion.button>
-              )}
             </div>
+
+            {/* Cancel — only while the order hasn't been prepared yet */}
+            {canCancel && (
+              <div className="mx-4 mt-3">
+                <button onClick={cancelOrder} disabled={cancelling}
+                  className="w-full py-3 rounded-2xl bg-red-50 border border-red-200 text-red-500 font-bold text-sm disabled:opacity-60">
+                  {cancelling ? "Cancelling..." : "Cancel Order"}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
